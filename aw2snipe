@@ -23,32 +23,31 @@
 #   This setting sets the Snipe Asset status when creating a new asset. By default it's set to 4 (Pending). 
 #   defaultStatus = 4
 #
-#   You can associate snipe hardware keys in the [api-mapping] section, to to a JAMF keys so it associates 
-#   the jamf values into snipe. The default example associates information that exists by default in both 
-#   Snipe and JAMF.  The Key value is the exact name of the snipe key name. 
-#   Value1 is the "Subset" (JAMF's wording not mine) name, and the Value2 is the JAMF key name. 
+#   You can associate snipe hardware keys in the [api-mapping] section, to to a airwatch keys so it associates
+#   the airwatch values into snipe. The default example associates information that exists by default in both
+#   Snipe and Airwatch.  The Key value is the exact name of the snipe key name.
+#   Value1 is the "Subset" (Airwatch's wording not mine) name, and the Value2 is the Airwatch key name.
 #   Note that MAC Address are a custom value in SNIPE by default and you can use it as an example.
 #
 #   [api-mapping]
 #       name = general name
 #       _snipeit_mac_address_1 = general mac_address
-#       _snipeit_custom_name_1234567890 = subset jamf_key
+#       _snipeit_custom_name_1234567890 = subset airwatch_key
 #
 #   A list of valid subsets are: 
 validsubset = (
-        "general",
-        "location",
-        "purchasing",
-        "peripherals",
-        "hardware",
-        "certificates",
-        "software",
-        "extension_attributes",
-        "groups_accounts",
-        "iphones",
-        "configuration_profiles"
+    "general",
+    "location",
+    "purchasing",
+    "peripherals",
+    "hardware",
+    "certificates",
+    "software",
+    "extension_attributes",
+    "groups_accounts",
+    "iphones",
+    "configuration_profiles"
 )
-
 
 # Import all the things
 import json
@@ -59,7 +58,7 @@ import configparser
 # Find a valid settings.conf file.
 config = configparser.ConfigParser()
 config.read("/opt/jamf2snipe/settings.conf")
-if 'snipe-it' not in  set(config):
+if 'snipe-it' not in set(config):
     print("No valid config: /opt/jamf2snipe/settings.conf")
     config.read('/etc/jamf2snipe/settings.conf')
 if 'snipe-it' not in set(config):
@@ -69,80 +68,91 @@ if 'snipe-it' not in set(config):
     print("No valid config found in current folder")
     raise SystemExit("Error: Unable to find valid settings.conf file. Exiting.")
 
-
 # Set some Variables:
 # This is the address, cname, or FQDN for your JamfPro instance.
-jamfpro_base = config['jamf']['url']
-jamf_api_user = config['jamf']['username']
-jamf_api_password = config['jamf']['password']
+mdm_url_base = config['airwatch']['url']
+mdm_api_user = config['airwatch']['username']
+mdm_api_password = config['airwatch']['password']
 # This is the address, cname, or FQDN for your snipe-it instance.
-snipe_base = config['snipe-it']['url']
-apiKey = config['snipe-it']['apiKey']
-defaultStatus = config['snipe-it']['defaultStatus']
+snipe_url_base = config['snipe-it']['url']
+snipe_api_key = config['snipe-it']['apiKey']
+default_status = config['snipe-it']['defaultStatus']
 apple_manufacturer_id = config['snipe-it']['manufacturer_id']
 # Headers for the API call.
-jamfheaders = {'Accept': 'application/json'}
-snipeheaders = {'Authorization': 'Bearer {}'.format(apiKey),'Accept': 'application/json','Content-Type':'application/json'}
+mdm_headers = {'Accept': 'application/json'}
+snipe_headers = {'Authorization': 'Bearer {}'.format(snipe_api_key), 'Accept': 'application/json',
+                 'Content-Type': 'application/json'}
 
-# Check the config file for valid jamf subsets.
+# Check the config file for valid mdm subsets.
 print("Checking the conf file")
 for key in config['api-mapping']:
-    jamfsplit = config['api-mapping'][key].split()
-    if jamfsplit[0] in validsubset:
-        print('Found subset {}: Good'.format(jamfsplit[0]))
+    mdm_split = config['api-mapping'][key].split()
+    if mdm_split[0] in validsubset:
+        print('Found subset {}: Good'.format(mdm_split[0]))
         continue
     else:
-        print("Found subset {}: This is not in the acceptable list of subsets. Check your settings.conf\n Valid subsets are:".format(jamfsplit[0]))
+        print(
+            "Found subset {}: This is not in the acceptable list of subsets. Check your settings.conf\n Valid subsets are:".format(
+                mdm_split[0]))
         print(validsubset)
         raise SystemExit("Invalid Subset found in settings.conf")
 
+
 ### Setup Some Functions ###
-# Function to make the API call for all JAMF devices
-def get_jamf_computers():
-    api_url = '{0}/JSSResource/computers'.format(jamfpro_base)
-    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders)
+# Function to make the API call for all Airwatch devices
+def get_airwatch_devices():
+    api_url = '{0}/api/system/users/enrolleddevices/search'.format(mdm_url_base)
+    response = requests.get(api_url, auth=(mdm_api_user, mdm_api_password), headers=mdm_headers)
     if response.status_code == 200:
-        return response.json()
+        return response.json()['EnrolledDeviceInfoList']
     else:
         print('Error code:{}'.format(response.status_code))
         return None
 
-# Function to lookup a JAMF asset by id.
-def search_jamf_asset(jamf_id):
-    api_url = "{}/JSSResource/computers/id/{}".format(jamfpro_base, jamf_id)
-    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders)
+
+# Function to lookup a Airwatch asset by id.
+def search_airwatch_asset(airwatch_id):
+    api_url = "{}/api/mdm/devices/{}".format(mdm_url_base, airwatch_id)
+    response = requests.get(api_url, auth=(mdm_api_user, mdm_api_password), headers=mdm_headers)
     if response.status_code == 200:
         jsonresponse = response.json()
-        return jsonresponse['computer']
-    elif b'policies.ratelimit.QuotaViolation' in response.content:
-        print('JAMFPro responded with error code: {} - Policy Ratelimit Quota Violation - when we tried to look up id: {} Waiting a bit to retry the lookup.'.format(response, jamf_id))
-        time.sleep(75)
-        newresponse = search_jamf_asset(jamf_id, asset_tag)
-        return newresponse
+        return jsonresponse['EnrolledDeviceInfoList']
+    # elif b'policies.ratelimit.QuotaViolation' in response.content:
+    #     print(
+    #         'JAMFPro responded with error code: {} - Policy Ratelimit Quota Violation - when we tried to look up id: {} Waiting a bit to retry the lookup.'.format(
+    #             response, airwatch_id))
+    #     time.sleep(75)
+    #     newresponse = search_airwatch_asset(airwatch_id, asset_tag)
+    #     return newresponse
     else:
-        print('JAMFPro responded with error code:{} when we tried to look up id: {}'.format(response, jamf_id))
+        print('Airwatch responded with error code:{} when we tried to look up id: {}'.format(response, airwatch_id))
         return None
 
-# Function to update the asset tag in JAMF with an number passed from Snipe. 
-def update_jamf_asset_tag(jamf_id, asset_tag):
-    api_url = "{}/JSSResource/computers/id/{}".format(jamfpro_base, jamf_id)
-    payload = """<?xml version="1.0" encoding="UTF-8"?><computer><general><id>{}</id><asset_tag>{}</asset_tag></general></computer>""".format(jamf_id, asset_tag)
-    response = requests.put(api_url, auth=(jamf_api_user, jamf_api_password), data=payload, headers=jamfheaders)
+
+# Function to update the asset tag in Airwatch with an number passed from Snipe.
+def update_airwatch_asset_tag(airwatch_id, asset_tag):
+    api_url = "{}//api/mdm/devices/{}".format(mdm_url_base, airwatch_id)
+    payload = """<?xml version="1.0" encoding="UTF-8"?><computer><general><id>{}</id><asset_tag>{}</asset_tag></general></computer>""".format(
+        airwatch_id, asset_tag)
+    response = requests.put(api_url, auth=(mdm_api_user, mdm_api_password), data=payload, headers=mdm_headers)
     if response.status_code == 201:
         return True
-    elif b'policies.ratelimit.QuotaViolation' in response.content:
-        print('JAMFPro responded with error code: {} - Policy Ratelimit Quota Violation -  when we tried to look up id: {} Waiting a bit to retry the lookup.'.format(response, jamf_id))
-        time.sleep(75)
-        newupdate = update_jamf_asset_tag(jamf_id, asset_tag)
-        return newupdate
+    # elif b'policies.ratelimit.QuotaViolation' in response.content:
+    #     print(
+    #         'JAMFPro responded with error code: {} - Policy Ratelimit Quota Violation -  when we tried to look up id: {} Waiting a bit to retry the lookup.'.format(
+    #             response, airwatch_id))
+    #     time.sleep(75)
+    #     newupdate = update_airwatch_asset_tag(airwatch_id, asset_tag)
+    #     return newupdate
     else:
-        print('JAMFPro responded with error code:{} when we tried to update id: {}'.format(response, jamf_id))
+        print('Airwatch responded with error code:{} when we tried to update id: {}'.format(response, airwatch_id))
         return False
+
 
 # Function to lookup a snipe asset by serial number or other identifier.
 def search_snipe_asset(search_term):
-    api_url = '{}/api/v1/hardware?search={}'.format(snipe_base, search_term)
-    response = requests.get(api_url, headers=snipeheaders)
+    api_url = '{}/api/v1/hardware?search={}'.format(snipe_url_base, search_term)
+    response = requests.get(api_url, headers=snipe_headers)
     if response.status_code == 200:
         jsonresponse = response.json()
         # Check to make sure there's actually a result
@@ -152,50 +162,55 @@ def search_snipe_asset(search_term):
             print("No assets match {}".format(search_term))
             return "NoMatch"
         else:
-            print('WARNING: FOUND {} matching assets while searching for: {}'.format(jsonresponse['total'], search_term))
+            print(
+                'WARNING: FOUND {} matching assets while searching for: {}'.format(jsonresponse['total'], search_term))
             return "MultiMatch"
     else:
         print('Snipe-IT responded with error code:{} when we tried to look up: {}'.format(response, search_term))
         return "ERROR"
 
+
 # Function to get all the asset models
 def get_snipe_models():
-    api_url = '{}/api/v1/models'.format(snipe_base)
+    api_url = '{}/api/v1/models'.format(snipe_url_base)
     # print ('Calling against: {}'.format(api_url))
-    response = requests.get(api_url, headers=snipeheaders)
+    response = requests.get(api_url, headers=snipe_headers)
     if response.status_code == 200:
         return response.json()
     else:
         print('Error code:{}'.format(response.status_code))
         return None
 
+
 # Function that creates a new Snipe Model - not an asset - with a JSON payload
 def create_snipe_model(payload):
-    api_url = '{}/api/v1/models'.format(snipe_base)
-    response = requests.post(api_url, headers=snipeheaders, json=payload)
+    api_url = '{}/api/v1/models'.format(snipe_url_base)
+    response = requests.post(api_url, headers=snipe_headers, json=payload)
     if response.status_code == 200:
         jsonresponse = response.json()
         modelnumbers[jsonresponse['payload']['model_number']] = jsonresponse['payload']['id']
         return True
-    else: 
+    else:
         print('Error code: {} while trying to create a new model.'.format(response.status_code))
         return False
 
+
 # Function to create a new asset by passing array
 def create_snipe_asset(payload):
-    api_url = '{}/api/v1/hardware'.format(snipe_base)
-    #print ('Calling against: {}'.format(api_url))
-    response = requests.post(api_url, headers=snipeheaders, json=payload)
+    api_url = '{}/api/v1/hardware'.format(snipe_url_base)
+    # print ('Calling against: {}'.format(api_url))
+    response = requests.post(api_url, headers=snipe_headers, json=payload)
     if response.status_code == 200:
-        #print(response.content)
+        # print(response.content)
         return "AssetCreated"
     else:
         return response
 
+
 # Function that updates a snipe asset with a JSON payload
 def update_snipe_asset(snipe_id, payload):
-    api_url = '{}/api/v1/hardware/{}'.format(snipe_base, snipe_id)
-    response = requests.patch(api_url, headers=snipeheaders, json=payload)
+    api_url = '{}/api/v1/hardware/{}'.format(snipe_url_base, snipe_id)
+    response = requests.patch(api_url, headers=snipe_headers, json=payload)
     # Verify that the payload updated properly.
     if response.status_code == 200:
         check = json.dumps(next(iter(payload.values())))
@@ -215,80 +230,94 @@ def update_snipe_asset(snipe_id, payload):
 snipemodels = get_snipe_models()
 modelnumbers = {}
 for model in snipemodels['rows']:
-    modelnumbers[model['model_number']] =  model['id']
+    modelnumbers[model['model_number']] = model['id']
 
 # Get the IDS of all active assets. 
-jamf_computer_list = get_jamf_computers()
+airwatch_device_list = get_airwatch_devices()
 
 # Make sure we have a good list.
-if jamf_computer_list is not None:
-    print('Received a list of JAMF assets.\nUpdating inventory')
-    for jamf_asset in jamf_computer_list['computers']:
-        
+if airwatch_device_list is not None:
+    print('Received a list of Airwatch assets.\nUpdating inventory')
+    for airwatch_asset in airwatch_device_list['EnrolledDeviceInfoList']:
+
         # Search through the list by ID for all asset information
-        jamf = search_jamf_asset(jamf_asset['id'])
-        if jamf is None:
+        airwatch = search_airwatch_asset(airwatch_asset['id'])
+        if airwatch is None:
             continue
-        
+
         # Check that the model number exists in snipe, if not create it. 
-        if jamf['hardware']['model_identifier'] not in modelnumbers:
-            newmodel = {"category_id":1,"manufacturer_id":apple_manufacturer_id,"name": jamf['hardware']['model'],"model_number":jamf['hardware']['model_identifier']}
+        if airwatch['hardware']['model_identifier'] not in modelnumbers:
+            newmodel = {
+                "category_id": 1,
+                "manufacturer_id": apple_manufacturer_id,
+                "name": airwatch['hardware']['model'],
+                "model_number": airwatch['hardware']['model_identifier']
+            }
             create_snipe_model(newmodel)
-        
-        # Pass the SN from JAMF to search for a match in Snipe
-        snipe = search_snipe_asset(jamf['general']['serial_number'])
-        
+
+        # Pass the SN from Airwatch to search for a match in Snipe
+        snipe = search_snipe_asset(airwatch['general']['serial_number'])
+
         # Create a new asset if there's no match:
         if snipe is 'NoMatch':
             print("Creating a new asset in snipe.")
-            # This section checks to see if the asset tag was already put into JAMF, if not it creates one with with Jamf's ID.
-            if jamf['general']['asset_tag'] is '':
-                jamf_asset_tag = 'jamfid-{}'.format(jamf['general']['id'])
+            # This section checks to see if the asset tag was already put into Airwatch, if not it creates one with with Airwatch's ID.
+            if airwatch['general']['asset_tag'] is '':
+                airwatch_asset_tag = 'jamfid-{}'.format(airwatch['general']['id'])
             else:
-                jamf_asset_tag = jamf['general']['asset_tag']
+                airwatch_asset_tag = airwatch['general']['asset_tag']
             # Create the payload
-            newasset = {'asset_tag': jamf_asset_tag,'model_id': modelnumbers['{}'.format(jamf['hardware']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}
-            if jamf['general']['serial_number'] == 'Not Available':
+            newasset = {
+                'asset_tag': airwatch_asset_tag,
+                'model_id': modelnumbers['{}'.format(airwatch['hardware']['model_identifier'])],
+                'name': airwatch['general']['name'],
+                'status_id': default_status,
+                'serial': airwatch['general']['serial_number']
+            }
+
+            if airwatch['general']['serial_number'] == 'Not Available':
                 print("Serial is not available, skipping.")
             else:
                 create_snipe_asset(newasset)
 
         # Log an error if there's an issue, or more than once match. 
         elif snipe is 'MultiMatch':
-            print("ERROR: You need to resolve multiple assets with the same serial number in your inventory. If you can't find them in your inventory, you might need to purge your deleted records. You can find that in the Snipe Admin settings. Skipping this serial number for now.")
+            print(
+                "ERROR: You need to resolve multiple assets with the same serial number in your inventory. If you can't find them in your inventory, you might need to purge your deleted records. You can find that in the Snipe Admin settings. Skipping this serial number for now.")
         elif snipe is 'ERROR':
             print("Check your snipe instance and setup. Skipping for now.")
 
         else:
-            # Only update if JAMF has more recent info. 
+            # Only update if Airwatch has more recent info.
             snipe_id = snipe['rows'][0]['id']
             snipe_time = snipe['rows'][0]['updated_at']['datetime']
-            jamf_time = jamf['general']['report_date']
-            # Check to see that the JAMF record is newer than the previous snipe update. 
-            if jamf_time > snipe_time:
+            airwatch_time = airwatch['general']['report_date']
+            # Check to see that the Airwatch record is newer than the previous snipe update.
+            if airwatch_time > snipe_time:
                 for snipekey in config['api-mapping']:
-                    jamfsplit = config['api-mapping'][snipekey].split()
-                    payload = {snipekey: jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])]}
+                    mdm_split = config['api-mapping'][snipekey].split()
+                    payload = {snipekey: airwatch['{}'.format(mdm_split[0])]['{}'.format(mdm_split[1])]}
                     update_snipe_asset(snipe_id, payload)
-            # Update/Sync the Snipe Asset Tag Number back to JAMF
-            if jamf['general']['asset_tag'] is not snipe['rows'][0]['asset_tag']:
+            # Update/Sync the Snipe Asset Tag Number back to Airwatch
+            if airwatch['general']['asset_tag'] is not snipe['rows'][0]['asset_tag']:
                 if snipe['rows'][0]['asset_tag'][0].isdigit():
-                    update_jamf_asset_tag("{}".format(jamf['general']['id']), '{}'.format(snipe['rows'][0]['asset_tag']))
+                    update_airwatch_asset_tag("{}".format(airwatch['general']['id']),
+                                          '{}'.format(snipe['rows'][0]['asset_tag']))
 
 ### Some Error Investigation ###
 else:
-    print("Couldn't get a list of computers from JAMF. Maybe your username and password are bad?")
-    
+    print("Couldn't get a list of computers from Airwatch. Maybe your username and password are bad?")
+
     # Do some tests to see if the hosts are up. 
     try:
-        SNIPE_UP = True if requests.get(snipe_base).status_code is 200 else False
+        SNIPE_UP = True if requests.get(snipe_url_base).status_code is 200 else False
     except:
         SNIPE_UP = False
     try:
-        JAMF_UP = True if requests.get(jamf_base).status_code is 200 or 401 else False
+        AW_UP = True if requests.get(jamf_base).status_code is 200 or 401 else False
     except:
-        JAMF_UP = False
+        AW_UP = False
     if SNIPE_UP is False:
         print('Snipe-IT looks like it is down from here. Please check your config or your instance.')
     if SNIPE_UP is False:
-        print('JAMFPro looks down from here. Please check the your config or your hosted JAMFPro instance.')
+        print('Airwatch looks down from here. Please check the your config or your hosted Airwatch instance.')
