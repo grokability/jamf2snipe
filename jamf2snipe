@@ -285,5 +285,5 @@ else:
         JAMF_UP = False
     if SNIPE_UP is False:
         print('Snipe-IT looks like it is down from here. Please check your config or your instance.')
-    if SNIPE_UP is False:
+    if JAMF_UP is False:
         print('JAMFPro looks down from here. Please check the your config or your hosted JAMFPro instance.')
