@@ -1,5 +1,5 @@
 # JAMF2Snipe 
-## Imports/Sync Computers from JAMF to Snipe-IT
+## Import/Sync Computers from JAMF to Snipe-IT
 ```
 usage: jamf2snipe [-h] [-v] [--dryrun] [-d]
 
