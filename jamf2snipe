@@ -210,6 +210,7 @@ def search_snipe_asset(serial):
             return "MultiMatch"
     else:
         logging.warning('Snipe-IT responded with error code:{} when we tried to look up: {}'.format(response, serial))
+        logging.debug('{} - {}'.format(response.status_code, response.content))
         return "ERROR"
 
 # Function to get all the asset models
