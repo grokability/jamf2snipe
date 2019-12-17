@@ -58,6 +58,7 @@ runtimeargs = argparse.ArgumentParser()
 runtimeargs.add_argument("-v", "--verbose", help="Sets the logging level to INFO and gives you a better idea of what the script is doing.", action="store_true")
 runtimeargs.add_argument("--dryrun", help="This checks your config and tries to contact both the JAMFPro and Snipe-it instances, but exits before updating or syncing any assets.", action="store_true")
 runtimeargs.add_argument("-d", "--debug", help="Sets logging to include additional DEBUG messages.", action="store_true")
+runtimeargs.add_argument('--do_not_verify_ssl', help="Skips JAMF SSL verification. Required when you use JAMF Pro's self-signed certificate.", action="store_false")
 args = runtimeargs.parse_args()
 
 # Notify users they're going to get a wall of text in verbose mode.
@@ -133,7 +134,7 @@ for key in config['api-mapping']:
 def get_jamf_computers():
     api_url = '{0}/JSSResource/computers'.format(jamfpro_base)
     logging.debug('Calling for JAMF computers against: {}\n The username, passwords, and headers for this GET requestcan be found near the beginning of the output.'.format(api_url))
-    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders)
+    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders, verify=args.do_not_verify_ssl)
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         return response.json()
@@ -152,7 +153,7 @@ def get_jamf_computers():
 # Function to lookup a JAMF asset by id.
 def search_jamf_asset(jamf_id):
     api_url = "{}/JSSResource/computers/id/{}".format(jamfpro_base, jamf_id)
-    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders)
+    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders, verify=args.do_not_verify_ssl)
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         jsonresponse = response.json()
@@ -175,7 +176,7 @@ def update_jamf_asset_tag(jamf_id, asset_tag):
     api_url = "{}/JSSResource/computers/id/{}".format(jamfpro_base, jamf_id)
     payload = """<?xml version="1.0" encoding="UTF-8"?><computer><general><id>{}</id><asset_tag>{}</asset_tag></general></computer>""".format(jamf_id, asset_tag)
     logging.debug('Making Get request against: {}\nPayload for the PUT request is: {}\nThe username, password, and headers can be found near the beginning of the output.'.format(api_url, payload))
-    response = requests.put(api_url, auth=(jamf_api_user, jamf_api_password), data=payload, headers=jamfheaders)
+    response = requests.put(api_url, auth=(jamf_api_user, jamf_api_password), data=payload, headers=jamfheaders, verify=args.do_not_verify_ssl)
     if response.status_code == 201:
         logging.debug("Got a 201 response. Returning: True")
         return True
@@ -294,7 +295,7 @@ try:
 except:
     SNIPE_UP = False
 try:
-    JAMF_UP = True if requests.get(jamfpro_base).status_code is 200 or 401 else False
+    JAMF_UP = True if requests.get(jamfpro_base).status_code in (200, 401) else False
 except:
     JAMF_UP = False
 
