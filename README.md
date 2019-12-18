@@ -1,16 +1,19 @@
 # jamf2snipe 
 ## Import/Sync Computers from JAMF to Snipe-IT
 ```
-usage: jamf2snipe [-h] [-v] [--dryrun] [-d]
+usage: jamf2snipe [-h] [-v] [--dryrun] [-d] [--do_not_verify_ssl]
 
 optional arguments:
-  -h, --help     show this help message and exit
-  -v, --verbose  Sets the logging level to INFO and gives you a better idea of
-                 what the script is doing.
-  --dryrun       This checks your config and tries to contact both the JAMF Pro
-                 and Snipe-IT instances, but exits before updating or syncing
-                 any assets.
-  -d, --debug    Sets logging to include additional DEBUG messages.
+  -h, --help           show this help message and exit
+  -v, --verbose        Sets the logging level to INFO and gives you a better
+                       idea of what the script is doing.
+  --dryrun             This checks your config and tries to contact both the
+                       JAMFPro and Snipe-it instances, but exits before
+                       updating or syncing any assets.
+  -d, --debug          Sets logging to include additional DEBUG messages.
+  --do_not_verify_ssl  Skips JAMF SSL verification. Helpful when you use self-
+                       signed certificate.
+
 ```
 
 ## Overview:
