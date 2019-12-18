@@ -58,7 +58,7 @@ runtimeargs = argparse.ArgumentParser()
 runtimeargs.add_argument("-v", "--verbose", help="Sets the logging level to INFO and gives you a better idea of what the script is doing.", action="store_true")
 runtimeargs.add_argument("--dryrun", help="This checks your config and tries to contact both the JAMFPro and Snipe-it instances, but exits before updating or syncing any assets.", action="store_true")
 runtimeargs.add_argument("-d", "--debug", help="Sets logging to include additional DEBUG messages.", action="store_true")
-runtimeargs.add_argument('--do_not_verify_ssl', help="Skips JAMF SSL verification. Required when you use JAMF Pro's self-signed certificate.", action="store_false")
+runtimeargs.add_argument('--do_not_verify_ssl', help="Skips JAMF SSL verification. Helpful when you use self-signed certificate.", action="store_false")
 args = runtimeargs.parse_args()
 
 # Notify users they're going to get a wall of text in verbose mode.
@@ -197,7 +197,7 @@ def update_jamf_asset_tag(jamf_id, asset_tag):
 # Function to lookup a snipe asset by serial number.
 def search_snipe_asset(serial):
     api_url = '{}/api/v1/hardware/byserial/{}'.format(snipe_base, serial)
-    response = requests.get(api_url, headers=snipeheaders)
+    response = requests.get(api_url, headers=snipeheaders, verify=args.do_not_verify_ssl)
     if response.status_code == 200:
         jsonresponse = response.json()
         # Check to make sure there's actually a result
@@ -218,7 +218,7 @@ def search_snipe_asset(serial):
 def get_snipe_models():
     api_url = '{}/api/v1/models'.format(snipe_base)
     logging.debug('Calling against: {}'.format(api_url))
-    response = requests.get(api_url, headers=snipeheaders)
+    response = requests.get(api_url, headers=snipeheaders, verify=args.do_not_verify_ssl)
     if response.status_code == 200:
         jsonresponse = response.json()
         logging.debug("Got a valid response that should have {} models.".format(jsonresponse['total']))
@@ -227,7 +227,7 @@ def get_snipe_models():
         else:
             logging.info("We didn't get enough results so we need to get them again.")
             api_url = '{}/api/v1/models?limit={}'.format(snipe_base, jsonresponse['total'])
-            newresponse = requests.get(api_url, headers=snipeheaders)
+            newresponse = requests.get(api_url, headers=snipeheaders, verify=args.do_not_verify_ssl)
             if response.status_code == 200:
                 newjsonresponse = newresponse.json()
                 if newjsonresponse['total'] == len(newjsonresponse['rows']) :
@@ -246,7 +246,7 @@ def get_snipe_models():
 def create_snipe_model(payload):
     api_url = '{}/api/v1/models'.format(snipe_base)
     logging.debug('Calling to create new snipe model type against: {}\nThe payload for the POST request is:{}\nThe request headers can be found near the start of the output.'.format(api_url, payload))
-    response = requests.post(api_url, headers=snipeheaders, json=payload)
+    response = requests.post(api_url, headers=snipeheaders, json=payload, verify=args.do_not_verify_ssl)
     if response.status_code == 200:
         jsonresponse = response.json()
         modelnumbers[jsonresponse['payload']['model_number']] = jsonresponse['payload']['id']
@@ -259,7 +259,7 @@ def create_snipe_model(payload):
 def create_snipe_asset(payload):
     api_url = '{}/api/v1/hardware'.format(snipe_base)
     logging.debug('Calling to create a new asset against: {}\nThe payload for the POST request is:{}\nThe request headers can be found near the start of the output.'.format(api_url, payload))
-    response = requests.post(api_url, headers=snipeheaders, json=payload)
+    response = requests.post(api_url, headers=snipeheaders, json=payload, verify=args.do_not_verify_ssl)
     if response.status_code == 200:
         logging.debug("Got back status code: 200 - {}".format(response.content))
         return "AssetCreated"
@@ -268,7 +268,7 @@ def create_snipe_asset(payload):
 
 # Function that updates a snipe asset with a JSON payload
 def update_snipe_asset(snipe_id, payload):
-    api_url = '{}/api/v1/hardware/{}'.format(snipe_base, snipe_id)
+    api_url = '{}/api/v1/hardware/{}'.format(snipe_base, snipe_id, verify=args.do_not_verify_ssl)
     logging.debug('The payload for the snipe update is: {}'.format(payload))
     response = requests.patch(api_url, headers=snipeheaders, json=payload)
     # Verify that the payload updated properly.
@@ -288,14 +288,17 @@ def update_snipe_asset(snipe_id, payload):
         return False
 
 ### Run Testing ###
+# Report if we're verifying SSL or not. 
+logging.info("SSL Verification is set to: {}".format(args.do_not_verify_ssl))
+
 # Do some tests to see if the hosts are up.
 logging.info("Running tests to see if hosts are up.")
 try:
-    SNIPE_UP = True if requests.get(snipe_base).status_code is 200 else False
+    SNIPE_UP = True if requests.get(snipe_base, verify=args.do_not_verify_ssl).status_code is 200 else False
 except:
     SNIPE_UP = False
 try:
-    JAMF_UP = True if requests.get(jamfpro_base).status_code in (200, 401) else False
+    JAMF_UP = True if requests.get(jamfpro_base, verify=args.do_not_verify_ssl).status_code in (200, 401) else False
 except:
     JAMF_UP = False
 
