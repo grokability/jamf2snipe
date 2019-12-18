@@ -108,6 +108,7 @@ logging.debug("The API key you provided for Snipe is: {}".format(apiKey))
 defaultStatus = config['snipe-it']['defaultStatus']
 logging.info("The default status we'll be setting updated computer to is: {} (I sure hope this is a number or something is probably wrong)".format(defaultStatus))
 apple_manufacturer_id = config['snipe-it']['manufacturer_id']
+model_category_id = config['snipe-it']['model_category_id']
 logging.info("The configured JAMFPro base url is: {} (Pretty sure this needs to be a number too)".format(apple_manufacturer_id))
 
 # Headers for the API call.
@@ -364,7 +365,7 @@ for jamf_asset in jamf_computer_list['computers']:
     # Check that the model number exists in snipe, if not create it.
     if jamf['hardware']['model_identifier'] not in modelnumbers:
         logging.info("Could not find a model ID in snipe for: {}".format(jamf['hardware']['model_identifier']))
-        newmodel = {"category_id":1,"manufacturer_id":apple_manufacturer_id,"name": jamf['hardware']['model'],"model_number":jamf['hardware']['model_identifier']}
+        newmodel = {"category_id":model_category_id,"manufacturer_id":apple_manufacturer_id,"name": jamf['hardware']['model'],"model_number":jamf['hardware']['model_identifier']}
         create_snipe_model(newmodel)
 
     # Pass the SN from JAMF to search for a match in Snipe
