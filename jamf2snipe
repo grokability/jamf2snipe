@@ -59,8 +59,9 @@ runtimeargs.add_argument("-v", "--verbose", help="Sets the logging level to INFO
 runtimeargs.add_argument("--dryrun", help="This checks your config and tries to contact both the JAMFPro and Snipe-it instances, but exits before updating or syncing any assets.", action="store_true")
 runtimeargs.add_argument("-d", "--debug", help="Sets logging to include additional DEBUG messages.", action="store_true")
 runtimeargs.add_argument('--do_not_verify_ssl', help="Skips SSL verification for all requests. Helpful when you use self-signed certificate.", action="store_false")
-runtimeargs.add_argument("-u", "--users", help="Checks out the item to the current user in Jamf", action="store_true")
-runtimeargs.add_argument("-uf", "--users-force", help="Checks out the item to the user specified in Jamf", action="store_true")
+runtimeargs.add_argument("-u", "--users", help="Checks out the item to the current user in Jamf if it's not already deployed", action="store_true")
+runtimeargs.add_argument("-ui", "--users_inverse", help="Checks out the item to the current user in Jamf if it's already deployed", action="store_true")
+runtimeargs.add_argument("-uf", "--users_force", help="Checks out the item to the user specified in Jamf no matter what", action="store_true")
 runtimeargs.add_argument("-m", "--mobiles", help="Runs mobiles only", action="store_true")
 runtimeargs.add_argument("-c", "--computers", help="Runs computers only", action="store_true")
 args = runtimeargs.parse_args()
@@ -466,7 +467,8 @@ for jamf_asset in jamf_computer_list['computers']:
         snipe_time = snipe['rows'][0]['updated_at']['datetime']
         jamf_time = jamf['general']['report_date']
         # Check to see that the JAMF record is newer than the previous Snipe update.
-        if jamf_time > snipe_time:
+        # if jamf_time > snipe_time:
+        if True:
             logging.debug("Updating the Snipe asset because JAMF has a more recent timestamp: {} > {}".format(jamf_time, snipe_time))
             for snipekey in config['api-mapping']:
                 jamfsplit = config['api-mapping'][snipekey].split()
@@ -491,10 +493,10 @@ for jamf_asset in jamf_computer_list['computers']:
                     if needsupdate is True:
                         update_snipe_asset(snipe_id, payload)
                     else:
-                        logging.debug("Skipping the payload, because it already exits, or the Snipe key we're mapping to doesn't.")
-            if args.users:
+                        logging.debug("Skipping the payload, because it already exists, or the Snipe key we're mapping to doesn't.")
+            if ((args.users or args.users_inverse) and (snipe['rows'][0]['assigned_to'] != None)*args.users_inverse) or args.users_force:
                 jamfsplit = config['user-mapping']['jamf_api_field'].split()
-                checkout_snipe_asset(jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])],jamf['general']['serial_number'], snipe['rows'][0]['assigned_to'])
+                checkout_snipe_asset(jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])],jamf['general']['serial_number'], snipe['rows'][0]['assigned_to']['id'])
                 
         # Update/Sync the Snipe Asset Tag Number back to JAMF
         if jamf['general']['asset_tag'] != snipe['rows'][0]['asset_tag']:
