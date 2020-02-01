@@ -329,7 +329,9 @@ def checkout_snipe_asset(user, asset, checked_out_user):
         asset_id = search_snipe_asset(asset)['rows'][0]['id']
     except:
         return "NotFound"
-    if checked_out_user == user_id:
+    if checked_out_user == None:
+        logging.info("Not checked out, checking out to {}".format(user))
+    elif checked_out_user['id'] == user_id:
         logging.info(asset + " already checked out to user " + user)
         return 'CheckedOut'
     elif checked_out_user == "NewAsset":
@@ -494,9 +496,9 @@ for jamf_asset in jamf_computer_list['computers']:
                         update_snipe_asset(snipe_id, payload)
                     else:
                         logging.debug("Skipping the payload, because it already exists, or the Snipe key we're mapping to doesn't.")
-            if ((args.users or args.users_inverse) and (snipe['rows'][0]['assigned_to'] != None)*args.users_inverse) or args.users_force:
+            if (args.users or args.users_inverse) and (snipe['rows'][0]['assigned_to'] == None) == args.users or args.users_force:
                 jamfsplit = config['user-mapping']['jamf_api_field'].split()
-                checkout_snipe_asset(jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])],jamf['general']['serial_number'], snipe['rows'][0]['assigned_to']['id'])
+                checkout_snipe_asset(jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])],jamf['general']['serial_number'], snipe['rows'][0]['assigned_to'])
                 
         # Update/Sync the Snipe Asset Tag Number back to JAMF
         if jamf['general']['asset_tag'] != snipe['rows'][0]['asset_tag']:
