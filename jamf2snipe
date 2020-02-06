@@ -158,12 +158,13 @@ def request_handler(r, *args, **kwargs):
         time_elapsed = (time.time() - first_snipe_call)
         snipe_api_rate = snipe_api_count / time_elapsed
         if snipe_api_rate > 1.95:
-            sleep_time = 0.5 + (snipe_api_rate - 2)
+            sleep_time = 0.5 + (snipe_api_rate - 1.95)
             logging.info('Going over snipe rate limit of 120/minute ({}/minute), sleeping for {}'.format(snipe_api_rate,sleep_time))
             time.sleep(sleep_time)
         logging.debug("Made {} requests to Snipe IT in {} seconds, with a request being sent every {} seconds".format(snipe_api_count, time_elapsed, snipe_api_rate))
     if '"messages":429' in r.text:
-            raise SystemExit("We've been rate limited. Use option -r to respect the built in Snipe IT API rate limit of 120/minute.")
+        logging.error(r.content)
+        raise SystemExit("We've been rate limited. Use option -r to respect the built in Snipe IT API rate limit of 120/minute.")
     return r
 
 # Function to make the API call for all JAMF devices
@@ -530,11 +531,17 @@ for jamf_type in jamf_types:
             if jamf['hardware']['model_identifier'] not in modelnumbers:
                 logging.info("Could not find a model ID in snipe for: {}".format(jamf['hardware']['model_identifier']))
                 newmodel = {"category_id":config['snipe-it']['computer_model_category_id'],"manufacturer_id":apple_manufacturer_id,"name": jamf['hardware']['model'],"model_number":jamf['hardware']['model_identifier']}
+                if 'computer_custom_fieldset_id' in config['snipe-it']:
+                    fieldset_split = config['snipe-it']['computer_custom_fieldset_id']
+                    newmodel['fieldset_id'] = fieldset_split
                 create_snipe_model(newmodel)
         elif jamf_type == 'mobile_devices':
             if jamf['general']['model_identifier'] not in modelnumbers:
                 logging.info("Could not find a model ID in snipe for: {}".format(jamf['general']['model_identifier']))
                 newmodel = {"category_id":config['snipe-it']['mobile_model_category_id'],"manufacturer_id":apple_manufacturer_id,"name": jamf['general']['model'],"model_number":jamf['general']['model_identifier']}
+                if 'mobile_custom_fieldset_id' in config['snipe-it']:
+                    fieldset_split = config['snipe-it']['mobile_custom_fieldset_id']
+                    newmodel['fieldset_id'] = fieldset_split
                 create_snipe_model(newmodel)
 
         # Pass the SN from JAMF to search for a match in Snipe
@@ -548,6 +555,11 @@ for jamf_type in jamf_types:
                 jamf_asset_tag = 'jamfid-{}'.format(jamf['general']['id'])
             else:
                 jamf_asset_tag = jamf['general']['asset_tag']
+            try:
+                tag_split = config['snipe-it']['asset_tag'].split()
+                jamf_asset_tag = jamf['{}'.format(tag_split[0])]['{}'.format(tag_split[1])]
+            except:
+                logging.info('No custom configuration found in settings.conf for asset tag name upon asset creation.')
             # Create the payload
             if jamf_type == 'computers':
                 newasset = {'asset_tag': jamf_asset_tag,'model_id': modelnumbers['{}'.format(jamf['hardware']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}
@@ -582,8 +594,8 @@ for jamf_type in jamf_types:
             elif jamf_type == 'mobile_devices':
                 jamf_time = jamf['general']['last_inventory_update']
             # Check to see that the JAMF record is newer than the previous Snipe update.
-            # if jamf_time > snipe_time:
-            if True:
+            if jamf_time > snipe_time:
+            # if True:
                 logging.debug("Updating the Snipe asset because JAMF has a more recent timestamp: {} > {}".format(jamf_time, snipe_time))
                 for snipekey in config['{}-api-mapping'.format(jamf_type)]:
                     jamfsplit = config['{}-api-mapping'.format(jamf_type)][snipekey].split()
