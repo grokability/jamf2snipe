@@ -508,12 +508,40 @@ if user_args.dryrun:
 logging.info('Starting to Update Inventory')
 CurrentNumber = 0
 
+<<<<<<< HEAD
 for jamf_type in jamf_types:
     if user_args.computers:
         if jamf_type != 'computers':
             continue
     if user_args.mobiles:
         if jamf_type != 'mobile_devices':
+=======
+    # Check that the model number exists in snipe, if not create it.
+    if jamf['hardware']['model_identifier'] not in modelnumbers:
+        logging.info("Could not find a model ID in snipe for: {}".format(jamf['hardware']['model_identifier']))
+        newmodel = {"category_id":model_category_id,"manufacturer_id":apple_manufacturer_id,"name": jamf['hardware']['model'],"model_number":jamf['hardware']['model_identifier']}
+        create_snipe_model(newmodel)
+    # Pass the SN from JAMF to search for a match in Snipe
+    try: 
+        snipe = search_snipe_asset(jamf['general']['serial_number'])
+    except:
+        # If the passing the SN fails for some reason (DEP or unserialized logic board) just continue. 
+        continue
+        logging.info("There was an issue with this entry's serial number and it will be skipped.")
+
+    # Create a new asset if there's no match:
+    if snipe is 'NoMatch':
+        logging.info("Creating a new asset in snipe for JAMF ID {} - {}".format(jamf['general']['id'], jamf['general']['name']))
+        # This section checks to see if the asset tag was already put into JAMF, if not it creates one with with Jamf's ID.
+        if jamf['general']['asset_tag'] is '':
+            jamf_asset_tag = 'jamfid-{}'.format(jamf['general']['id'])
+        else:
+            jamf_asset_tag = jamf['general']['asset_tag']
+        # Create the payload
+        newasset = {'asset_tag': jamf_asset_tag,'model_id': modelnumbers['{}'.format(jamf['hardware']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}
+        if jamf['general']['serial_number'] == 'Not Available':
+            logging.warning("The serial number is not available in JAMF. This is normal for DEP enrolled devices that have not yet checked in for the first time. Since there's no serial number yet, we'll skip it for now.")
+>>>>>>> upstream/master
             continue
     for jamf_asset in jamf_types[jamf_type][jamf_type]:
         CurrentNumber += 1
