@@ -125,6 +125,20 @@ jamfheaders = {'Accept': 'application/json'}
 snipeheaders = {'Authorization': 'Bearer {}'.format(apiKey),'Accept': 'application/json','Content-Type':'application/json'}
 logging.debug('Request headers for JamfPro will be: {}\nRequest headers for Snipe will be: {}'.format(jamfheaders, snipeheaders))
 
+# Check the config file for correct headers
+
+# Do some tests to see if the user has updated their settings.conf file
+SETTINGS_CORRECT = True
+if 'api-mapping' in config:
+    logging.error("Looks like you're using the old method for api-mapping. Please use computers-api-mapping and mobile_devices-api-mapping.")
+    SETTINGS_CORRECT = False
+if not 'user-mapping' in config and (user_args.users or user_args.users_force or user_args.users_inverse):
+    logging.error("""You've chosen to check out assets to users in some capacity using a cmdline switch, but not specified how you want to 
+    search Snipe IT for the users from Jamf. Make sure you have a 'user-mapping' section in your settings.conf file.""")
+    SETTINGS_CORRECT = False
+
+if not SETTINGS_CORRECT:
+    raise SystemExit
 
 # Check the config file for valid jamf subsets. This is based off the JAMF API and if it's not right we can't map fields over to SNIPE properly. 
 logging.debug("Checking the settings.conf file for valid JAMF subsets of the JAMF API so mapping can occur properly.")
