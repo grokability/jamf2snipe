@@ -1,18 +1,29 @@
 # jamf2snipe 
 ## Import/Sync Computers from JAMF to Snipe-IT
 ```
-usage: jamf2snipe [-h] [-v] [--dryrun] [-d] [--do_not_verify_ssl]
+usage: jamf2snipe [-h] [-v] [--dryrun] [-d] [--do_not_verify_ssl] [-r]
+                  [-u | -ui | -uf] [-m | -c]
 
 optional arguments:
-  -h, --help           show this help message and exit
-  -v, --verbose        Sets the logging level to INFO and gives you a better
-                       idea of what the script is doing.
-  --dryrun             This checks your config and tries to contact both the
-                       JAMFPro and Snipe-it instances, but exits before
-                       updating or syncing any assets.
-  -d, --debug          Sets logging to include additional DEBUG messages.
-  --do_not_verify_ssl  Skips JAMF SSL verification. Helpful when you use self-
-                       signed certificate.
+  -h, --help            show this help message and exit
+  -v, --verbose         Sets the logging level to INFO and gives you a better
+                        idea of what the script is doing.
+  --dryrun              This checks your config and tries to contact both the
+                        JAMFPro and Snipe-it instances, but exits before
+                        updating or syncing any assets.
+  -d, --debug           Sets logging to include additional DEBUG messages.
+  --do_not_verify_ssl   Skips SSL verification for all requests. Helpful when
+                        you use self-signed certificate.
+  -r, --ratelimited     Puts a half second delay between Snipe IT API calls to
+                        adhere to the standard 120/minute rate limit
+  -u, --users           Checks out the item to the current user in Jamf if
+                        it's not already deployed
+  -ui, --users_inverse  Checks out the item to the current user in Jamf if
+                        it's already deployed
+  -uf, --users_force    Checks out the item to the user specified in Jamf no
+                        matter what
+  -m, --mobiles         Runs mobiles only
+  -c, --computers       Runs computers only
 
 ```
 
@@ -96,6 +107,7 @@ Some example API mappings can be found below:
 - Purchase Cost:		`purchase_cost = purchasing purchase_price`
 - Purchase Date:		`purchase_date = purchasing po_date`
 - OS Version:			`_snipeit_<your_OS_version_custom_field_id> = hardware os_version`
+- Extension Attribute:    `_snipe_it_<your_custom_field_id> = extension_attributes <attribute id from jamf>`
 
 More information can be found in the ./jamf2snipe file about associations and [valid subsets](https://github.com/ParadoxGuitarist/jamf2snipe/blob/master/jamf2snipe#L33). 
 
