@@ -17,9 +17,9 @@ optional arguments:
   -r, --ratelimited     Puts a half second delay between Snipe IT API calls to
                         adhere to the standard 120/minute rate limit
   -u, --users           Checks out the item to the current user in Jamf if
-                        it's marked as 'Ready to Deploy'
+                        it's not already deployed
   -ui, --users_inverse  Checks out the item to the current user in Jamf if
-                        it's marked as 'Deployed'
+                        it's already deployed
   -uf, --users_force    Checks out the item to the user specified in Jamf no
                         matter what
   -m, --mobiles         Runs mobiles only
@@ -89,25 +89,9 @@ Note: do not add `""` or `''` around any values.
 - `url`: http://*your_snipe_instance*.com
 - `apikey`: API key generated via [these steps](https://snipe-it.readme.io/reference#generating-api-tokens).
 - `manufacturer_id`: The manufacturer database field id for the Apple in your Snipe-IT instance.
-- `defaultStatus`: The status database field id to assign to any assets created in Snipe-IT from JAMF. *This needs to be set to something deployable if you intend to use one of the user checking out options.*
-- `computer_model_category_id`: The category ID for computer models to be assigned to in Snipe-IT
-- `mobile_model_category_id`: The category ID for mobile models to be assigned to in Snipe-IT
-
-## Optional
-
-**[snipe-it]**
-
-- `computer_custom_fieldset_id`: The fieldset ID to apply to models as they're created. This needs to be set if you plan on using custom fields in your API Mapping section, otherwise the fields won't be applied to newly created models unless you manually go into Snipe IT
-- `mobile_custom_fieldset_id`: Same as above, but for mobile.
-- `asset_tag`: Set this to a field from Jamf if you don't have asset tags in Jamf. Must be something unique - serial number or IMEI is probably the best option here. This follows the same format tas the API Mapping section.
-
-**[user-mapping]**
-
-- `jamf_api_field`: The field from the Jamf API response you want to search for users with. If not using the -u option, this is not required.
+- `defaultStatus`: The status database field id to assign to any assets created in Snipe-IT from JAMF.
 
 ### API Mapping
-
-There are separate sections for the computer API mapping and the mobile API mapping as they fall into different endpoints in the Jamf API. The link below contains models for both of these at the bottom of the page (`computer` and `mobile_device`)
 
 To get the database fields for Snipe-IT Custom Fields, go to Custom Fields, scroll down past Fieldsets to Custom Fields, click the column selection and button and select the unchecked 'DB Field' checkbox. Copy and paste the DB Field name for the Snipe under api-mapping in settings.conf.
 
@@ -123,17 +107,9 @@ Some example API mappings can be found below:
 - Purchase Cost:		`purchase_cost = purchasing purchase_price`
 - Purchase Date:		`purchase_date = purchasing po_date`
 - OS Version:			`_snipeit_<your_OS_version_custom_field_id> = hardware os_version`
-
-And for mobile devices:
-
-- Device Name:  `name = general name`
-- IMEI:   `_snipeit_<your_OS_version_custom_field_id> = network imei`
+- Extension Attribute:    `_snipe_it_<your_custom_field_id> = extension_attributes <attribute id from jamf>`
 
 More information can be found in the ./jamf2snipe file about associations and [valid subsets](https://github.com/ParadoxGuitarist/jamf2snipe/blob/master/jamf2snipe#L33). 
-
-## Rate Limiting
-
-Snipe-IT instances are automatically rate limited to 120 API requests/minute. This limit can be adjusted if you run the instance on your own hardware, with instructions to do so [here](https://snipe-it.readme.io/reference#api-throttling). You might get the script to run a bit faster by increasing the limit. However, this will be overwritten if you update Snipe IT and it's not clear if this is changeable if your instance of Snipe IT is hosted by Grokability. A rate limiting feature is built in to jamf2snipe, use option `-r` to use it. 
 
 ## Testing
 
