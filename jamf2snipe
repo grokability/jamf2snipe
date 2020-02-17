@@ -173,7 +173,7 @@ def request_handler(r, *args, **kwargs):
         snipe_api_rate = snipe_api_count / time_elapsed
         if snipe_api_rate > 1.95:
             sleep_time = 0.5 + (snipe_api_rate - 1.95)
-            logging.info('Going over snipe rate limit of 120/minute ({}/minute), sleeping for {}'.format(snipe_api_rate,sleep_time))
+            logging.debug('Going over snipe rate limit of 120/minute ({}/minute), sleeping for {}'.format(snipe_api_rate,sleep_time))
             time.sleep(sleep_time)
         logging.debug("Made {} requests to Snipe IT in {} seconds, with a request being sent every {} seconds".format(snipe_api_count, time_elapsed, snipe_api_rate))
     if '"messages":429' in r.text:
