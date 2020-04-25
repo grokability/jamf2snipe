@@ -60,6 +60,7 @@ runtimeargs.add_argument("--dryrun", help="This checks your config and tries to 
 runtimeargs.add_argument("-d", "--debug", help="Sets logging to include additional DEBUG messages.", action="store_true")
 runtimeargs.add_argument('--do_not_verify_ssl', help="Skips SSL verification for all requests. Helpful when you use self-signed certificate.", action="store_false")
 runtimeargs.add_argument("-r", "--ratelimited", help="Puts a half second delay between Snipe IT API calls to adhere to the standard 120/minute rate limit", action="store_true")
+runtimeargs.add_argument("--no_search", help="Doesn't search for any users if the specified fields in Jamf and Snipe don't match - case insensitive", action="store_true")
 user_opts = runtimeargs.add_mutually_exclusive_group()
 user_opts.add_argument("-u", "--users", help="Checks out the item to the current user in Jamf if it's not already deployed", action="store_true")
 user_opts.add_argument("-ui", "--users_inverse", help="Checks out the item to the current user in Jamf if it's already deployed", action="store_true")
@@ -337,31 +338,33 @@ def get_snipe_models():
 def get_snipe_users(previous=[]):
     user_id_url = '{}/api/v1/users'.format(snipe_base)
     payload = {
-        'limit': 80,
+        'limit': 100,
         'offset': len(previous)
     }
     logging.debug('The payload for the snipe users GET is {}'.format(payload))
     response = requests.get(user_id_url, headers=snipeheaders, json=payload, hooks={'response': request_handler})
     response_json = response.json()
     current = response_json['rows']
-    print(str(response_json['total']) + " " + str(len(current)) + " " + str(len(previous)))
     if len(previous) is not 0:
         current = previous + current
     if response_json['total'] > len(current):
+        logging.debug('We have more than 100 users, get the next page - total: {} current: {}'.format(response_json['total'], len(current)))
         return get_snipe_users(current)
     else:
-        users = {}
-        for user in current:
-            users[user[config['user-mapping']['snipe_user_attribute']]] = user['id']
-        return users
+        return current
 
 # Function to search snipe for a user 
 def get_snipe_user_id(username):
-    if username in snipe_users:
-        id = snipe_users[username]
-        return id
-    else:
-        logging.debug('No matches in snipe_users for {}, querying the API for the next closest match'.format(username))
+    username = username.lower()
+    for user in snipe_users:
+        for value in user.values():
+            if str(value).lower() == username:
+                id = user['id']
+                return id
+    if user_args.no_search:
+        logging.debug("No matches in snipe_users for {}, not querying the API for the next closest match since we've been told not to".format(username))
+        return "NotFound"
+    logging.debug('No matches in snipe_users for {}, querying the API for the next closest match'.format(username))
     user_id_url = '{}/api/v1/users'.format(snipe_base)
     payload = {
         'search':username,
@@ -644,8 +647,8 @@ for jamf_type in jamf_types:
             elif jamf_type == 'mobile_devices':
                 jamf_time = jamf['general']['last_inventory_update']
             # Check to see that the JAMF record is newer than the previous Snipe update.
-            if jamf_time > snipe_time:
-            # if True: # uncomment for testing
+            # if jamf_time > snipe_time:
+            if True: # uncomment for testing
                 logging.debug("Updating the Snipe asset because JAMF has a more recent timestamp: {} > {}".format(jamf_time, snipe_time))
                 for snipekey in config['{}-api-mapping'.format(jamf_type)]:
                     jamfsplit = config['{}-api-mapping'.format(jamf_type)][snipekey].split()
@@ -686,8 +689,12 @@ for jamf_type in jamf_types:
                         else:
                             logging.debug("Skipping the payload, because it already exists, or the Snipe key we're mapping to doesn't.")
                 if ((user_args.users or user_args.users_inverse) and (snipe['rows'][0]['assigned_to'] == None) == user_args.users) or user_args.users_force:
+                    
                     if snipe['rows'][0]['status_label']['status_meta'] in ('deployable', 'deployed'):
                         jamfsplit = config['user-mapping']['jamf_api_field'].split()
+                        if jamfsplit[1] not in jamf[jamfsplit[0]]:
+                            logging.info("Couldn't find {} for this device in {}, not checking it out.".format(jamfsplit[1], jamfsplit[0]))
+                            continue
                         checkout_snipe_asset(jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])], snipe_id, snipe['rows'][0]['assigned_to'])
                     else:
                         logging.info("Can't checkout {} since the status isn't set to deployable".format(jamf['general']['name']))
