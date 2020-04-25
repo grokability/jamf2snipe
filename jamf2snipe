@@ -173,7 +173,7 @@ def request_handler(r, *args, **kwargs):
         snipe_api_rate = snipe_api_count / time_elapsed
         if snipe_api_rate > 1.95:
             sleep_time = 0.5 + (snipe_api_rate - 1.95)
-            logging.debug('Going over snipe rate limit of 120/minute ({}/minute), sleeping for {}'.format(snipe_api_rate,sleep_time))
+            logging.info('Going over snipe rate limit of 120/minute ({}/minute), sleeping for {}'.format(snipe_api_rate,sleep_time))
             time.sleep(sleep_time)
         logging.debug("Made {} requests to Snipe IT in {} seconds, with a request being sent every {} seconds".format(snipe_api_count, time_elapsed, snipe_api_rate))
     if '"messages":429' in r.text:
@@ -334,8 +334,34 @@ def get_snipe_models():
         logging.error('When we tried to retreive a list of models, Snipe-IT responded with error status code:{} - {}'.format(response.status_code, response.content))
         raise SystemExit("Snipe models API endpoint failed.")
 
+def get_snipe_users(previous=[]):
+    user_id_url = '{}/api/v1/users'.format(snipe_base)
+    payload = {
+        'limit': 80,
+        'offset': len(previous)
+    }
+    logging.debug('The payload for the snipe users GET is {}'.format(payload))
+    response = requests.get(user_id_url, headers=snipeheaders, json=payload, hooks={'response': request_handler})
+    response_json = response.json()
+    current = response_json['rows']
+    print(str(response_json['total']) + " " + str(len(current)) + " " + str(len(previous)))
+    if len(previous) is not 0:
+        current = previous + current
+    if response_json['total'] > len(current):
+        return get_snipe_users(current)
+    else:
+        users = {}
+        for user in current:
+            users[user[config['user-mapping']['snipe_user_attribute']]] = user['id']
+        return users
+
 # Function to search snipe for a user 
 def get_snipe_user_id(username):
+    if username in snipe_users:
+        id = snipe_users[username]
+        return id
+    else:
+        logging.debug('No matches in snipe_users for {}, querying the API for the next closest match'.format(username))
     user_id_url = '{}/api/v1/users'.format(snipe_base)
     payload = {
         'search':username,
@@ -498,6 +524,13 @@ jamf_types = {
     'computers': jamf_computer_list,
     'mobile_devices': jamf_mobile_list
 }
+
+# Get a list of users from Snipe if the user has specified
+# they're syncing users
+
+if user_args.users or user_args.users_force or user_args.users_inverse:
+    snipe_users = get_snipe_users()
+
 TotalNumber = 0
 if user_args.computers:
     TotalNumber = len(jamf_types['computers']['computers'])
@@ -590,6 +623,9 @@ for jamf_type in jamf_types:
                     continue
                 if user_args.users or user_args.users_force or user_args.users_inverse:
                     jamfsplit = config['user-mapping']['jamf_api_field'].split()
+                    if jamfsplit[1] not in jamf[jamfsplit[0]]:
+                        logging.info("Couldn't find {} for this device in {}, not checking it out.".format(jamfsplit[1], jamfsplit[0]))
+                        continue
                     logging.info('Checking out new item {} to user {}'.format(jamf['general']['name'], jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])]))
                     checkout_snipe_asset(jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])],new_snipe_asset[1].json()['payload']['id'], "NewAsset")
 
