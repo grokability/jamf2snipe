@@ -609,7 +609,7 @@ for jamf_type in jamf_types:
                 if 'asset_tag' in config['snipe-it']:
                     tag_split = config['snipe-it']['asset_tag'].split()
                     jamf_asset_tag = jamf['{}'.format(tag_split[0])]['{}'.format(tag_split[1])]
-                else:
+                if jamf_asset_tag == '':
                     logging.debug('No custom configuration found in settings.conf for asset tag name upon asset creation.')
                     if jamf_type == 'mobile_devices':
                         jamf_asset_tag = 'jamfid-m-{}'.format(jamf['general']['id'])
