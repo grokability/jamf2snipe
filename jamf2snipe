@@ -566,21 +566,23 @@ for jamf_type in jamf_types:
             logging.info("Creating a new asset in snipe for JAMF ID {} - {}".format(jamf['general']['id'], jamf['general']['name']))
             # This section checks to see if the asset tag was already put into JAMF, if not it creates one with with Jamf's ID.
             # If it is a Mobile record, then it add -m before the Jamf ID
-            if jamf['general']['asset_tag'] is '':
-                jamf_asset_tag = 'jamfid-{}'.format(jamf['general']['id'])
-                if jamf_type == 'mobile_devices':
-                    index = jamf_asset_tag.find('-')
-                    jamf_asset_tag = jamf_asset_tag[:index] + "-m" + jamf_asset_tag[index:]
-            else:
-                jamf_asset_tag = jamf['general']['asset_tag']
             try:
+                # Get the asset_tag value from settings.conf, then try to pull it apart to get the asset tag from jamf in the field specified.
                 tag_split = config['snipe-it']['asset_tag'].split()
                 jamf_asset_tag = jamf['{}'.format(tag_split[0])]['{}'.format(tag_split[1])]
             except:
                 logging.info('No custom configuration found in settings.conf for asset tag name upon asset creation.')
+            # Check to see if the above returns a value, if not then set the asset_tag to the jamf ID, add -m if it is mobile device
+            if jamf_asset_tag is '':
+                jamf_asset_tag = 'jamfid-{}'.format(jamf['general']['id'])
+                if jamf_type == 'mobile_devices':
+                    index = jamf_asset_tag.find('-')
+                    jamf_asset_tag = jamf_asset_tag[:index] + "-m" + jamf_asset_tag[index:]
+                    logging.debug("Mobile Device Detected, changing Asset Tag to: {}".format(jamf_asset_tag))
+                logging.info("Since no asset tag was found it is being set to: {}".format(jamf_asset_tag))
+            else:
+                logging.info("Asset tag found in Jamf, setting it to: {}".format(jamf_asset_tag))            
             # Create the payload
-            logging.debug("Asset Tag is: {}".format(jamf_asset_tag))
-            # time.sleep(36000)
             newasset = {'asset_tag': jamf_asset_tag, 'model_id': modelnumbers['{}'.format(jamf['general']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}
             if jamf['general']['serial_number'] == 'Not Available':
                 logging.warning("The serial number is not available in JAMF. This is normal for DEP enrolled devices that have not yet checked in for the first time. Since there's no serial number yet, we'll skip it for now.")
