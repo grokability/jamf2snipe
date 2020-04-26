@@ -335,6 +335,7 @@ def get_snipe_models():
         logging.error('When we tried to retreive a list of models, Snipe-IT responded with error status code:{} - {}'.format(response.status_code, response.content))
         raise SystemExit("Snipe models API endpoint failed.")
 
+# Recursive function returns all users in a Snipe Instance, 100 at a time.
 def get_snipe_users(previous=[]):
     user_id_url = '{}/api/v1/users'.format(snipe_base)
     payload = {
