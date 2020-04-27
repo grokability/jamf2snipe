@@ -632,7 +632,10 @@ for jamf_type in jamf_types:
                 logging.debug('No asset tag found in Jamf, checking settings.conf for alternative specified field.')
                 if 'asset_tag' in config['snipe-it']:
                     tag_split = config['snipe-it']['asset_tag'].split()
-                    jamf_asset_tag = jamf['{}'.format(tag_split[0])]['{}'.format(tag_split[1])]
+                    try:
+                        jamf_asset_tag = jamf['{}'.format(tag_split[0])]['{}'.format(tag_split[1])]
+                    except:
+                        raise SystemError('No such attribute {} in the jamf payload. Please check your settings.conf file'.format(tag_split))
                 if jamf_asset_tag is None:
                     logging.debug('No custom configuration found in settings.conf for asset tag name upon asset creation.')
                     if jamf_type == 'mobile_devices':
@@ -643,9 +646,11 @@ for jamf_type in jamf_types:
                 jamf_asset_tag = jamf['general']['asset_tag']
             # Create the payload
             if jamf_type == 'mobile_devices':
+                logging.debug("Payload is being made for a mobile device")
                 newasset = {'asset_tag': jamf_asset_tag, 'model_id': modelnumbers['{}'.format(jamf['general']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}
             elif jamf_type == 'computers':
-                newasset = {'asset_tag': jamf_asset_tag, 'model_id': modelnumbers['{}'.format(jamf['hardware']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}
+                logging.debug("Payload is being made for a computer")
+                newasset = {'asset_tag': jamf_asset_tag,'model_id': modelnumbers['{}'.format(jamf['hardware']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}           
             if jamf['general']['serial_number'] == 'Not Available':
                 logging.warning("The serial number is not available in JAMF. This is normal for DEP enrolled devices that have not yet checked in for the first time. Since there's no serial number yet, we'll skip it for now.")
                 continue
