@@ -747,3 +747,5 @@ for jamf_type in jamf_types:
                     elif jamf_type == 'mobile_devices':
                       update_jamf_mobiledevice_asset_tag("{}".format(jamf['general']['id']), '{}'.format(snipe['rows'][0]['asset_tag']))
                       logging.info("Device is a mobile device, updating the mobile device record")
+
+logging.debug('Total amount of API calls made: {}'.format(snipe_api_count))
