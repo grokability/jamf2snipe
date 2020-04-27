@@ -300,7 +300,7 @@ def update_jamf_mobiledevice_asset_tag(jamf_id, asset_tag):
         logging.warning('JAMFPro Ratelimit exceeded: pausing ')
         time.sleep(75)
         logging.info("Finished waiting. Retrying update...")
-        newresponse = update_jamf_asset_tag(jamf_id, asset_tag)
+        newresponse = update_jamf_mobiledevice_asset_tag(jamf_id, asset_tag)
         return newresponse
     if response.status_code == 200:
         logging.debug("Got a 200 response code. Returning the response: {}".format(response))
