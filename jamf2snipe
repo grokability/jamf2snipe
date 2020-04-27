@@ -289,7 +289,7 @@ def update_jamf_asset_tag(jamf_id, asset_tag):
 # Function to update the asset tag of mobile devices in JAMF with an number passed from Snipe.
 def update_jamf_mobiledevice_asset_tag(jamf_id, asset_tag):
     api_url = "{}/JSSResource/mobiledevices/id/{}".format(jamfpro_base, jamf_id)
-    payload = """<?xml version="1.0" encoding="UTF-8"?><mobiledevice><general><id>{}</id><asset_tag>{}</asset_tag></general></mobiledevice>""".format(jamf_id, asset_tag)
+    payload = """<?xml version="1.0" encoding="UTF-8"?><mobile_device><general><id>{}</id><asset_tag>{}</asset_tag></general></mobile_device>""".format(jamf_id, asset_tag)
     logging.debug('Making Get request against: {}\nPayload for the PUT request is: {}\nThe username, password, and headers can be found near the beginning of the output.'.format(api_url, payload))
     response = requests.put(api_url, auth=(jamf_api_user, jamf_api_password), data=payload, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 201:
