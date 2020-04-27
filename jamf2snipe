@@ -636,7 +636,7 @@ for jamf_type in jamf_types:
                         jamf_asset_tag = jamf['{}'.format(tag_split[0])]['{}'.format(tag_split[1])]
                     except:
                         raise SystemError('No such attribute {} in the jamf payload. Please check your settings.conf file'.format(tag_split))
-                if jamf_asset_tag is None:
+                if jamf_asset_tag is None or jamf_asset_tag is '':
                     logging.debug('No custom configuration found in settings.conf for asset tag name upon asset creation.')
                     if jamf_type == 'mobile_devices':
                         jamf_asset_tag = 'jamfid-m-{}'.format(jamf['general']['id'])
@@ -681,7 +681,7 @@ for jamf_type in jamf_types:
             elif jamf_type == 'mobile_devices':
                 jamf_time = jamf['general']['last_inventory_update']
             # Check to see that the JAMF record is newer than the previous Snipe update, or if it is a new record in Snipe
-            if jamf_time > snipe_time or snipe is 'NoMatch':
+            if jamf_time > snipe_time: # or snipe is 'NoMatch': < Unreachable, maybe changed down the line
             # if True: # uncomment for testing
                 logging.debug("Updating the Snipe asset because JAMF has a more recent timestamp: {} > {} or the Snipe Record is new".format(jamf_time, snipe_time))
                 for snipekey in config['{}-api-mapping'.format(jamf_type)]:
