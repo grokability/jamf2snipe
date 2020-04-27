@@ -693,6 +693,6 @@ for jamf_type in jamf_types:
                     if jamf_type == 'computers':
                        update_jamf_asset_tag("{}".format(jamf['general']['id']), '{}'.format(snipe['rows'][0]['asset_tag']))
                        loggin.info("Device is a computer, updating computer record")
-                    elseif jamf_type == `mobile_devices`
+                    elif jamf_type == 'mobile_devices':
                       update_jamf_mobiledevice_asset_tag("{}".format(jamf['general']['id']), '{}'.format(snipe['rows'][0]['asset_tag']))
                       logging.info("Device is a mobile device, updating the mobile device record")
