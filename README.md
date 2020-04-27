@@ -2,7 +2,7 @@
 ## Import/Sync Computers from JAMF to Snipe-IT
 ```
 usage: jamf2snipe [-h] [-v] [--dryrun] [-d] [--do_not_verify_ssl] [-r]
-                  [-u | -ui | -uf] [-m | -c]
+                  [--no_search] [-u | -ui | -uf] [-m | -c]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -14,8 +14,10 @@ optional arguments:
   -d, --debug           Sets logging to include additional DEBUG messages.
   --do_not_verify_ssl   Skips SSL verification for all requests. Helpful when
                         you use self-signed certificate.
-  -r, --ratelimited     Puts a half second delay between Snipe IT API calls to
-                        adhere to the standard 120/minute rate limit
+  -r, --ratelimited     Puts a half second delay between Snipe IT API calls
+                        to adhere to the standard 120/minute rate limit
+  --no_search           Doesn't search for any users if the specified fields
+                        in Jamf and Snipe don't match - case insensitive
   -u, --users           Checks out the item to the current user in Jamf if
                         it's not already deployed
   -ui, --users_inverse  Checks out the item to the current user in Jamf if
@@ -116,3 +118,7 @@ More information can be found in the ./jamf2snipe file about associations and [v
 It is *always* a good idea to create a test environment to ensure everything works as expected before running anything in production.
 
 Because `jamf2snipe` only ever writes the asset_tag for a matching serial number back to Jamf, testing with your production JAMF Pro is OK. However, this can overwrite good data in Snipe. You can spin up a Snipe instance in Docker pretty quickly ([see the Snipe docs](https://snipe-it.readme.io/docs/docker)).
+
+## Contributing
+
+Thanks to all of the people that have already contributed to this project! If you have something you'd like to add please help by forking this project then creating a pull request to the `devel` branch. When working on new features, please try to keep existing configs running in the same manner with no changes. When possible, open up an issue and reference it when you make your pull request.
