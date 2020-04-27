@@ -609,7 +609,7 @@ for jamf_type in jamf_types:
             if jamf_type == 'mobile_devices':
                 logging.debug("Payload is being made for a mobile device")
                 newasset = {'asset_tag': jamf_asset_tag, 'model_id': modelnumbers['{}'.format(jamf['general']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}
-            else
+            elif jamf_type == 'computer'
                 logging.debug("Payload is being made for a computer")
                 newasset = {'asset_tag': jamf_asset_tag,'model_id': modelnumbers['{}'.format(jamf['hardware']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}           
             if jamf['general']['serial_number'] == 'Not Available':
