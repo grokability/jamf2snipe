@@ -263,10 +263,33 @@ def search_jamf_mobile(jamf_id):
         logging.debug("Returning a null value for the function.")
         return None
 
-# Function to update the asset tag in JAMF with an number passed from Snipe.
+# Function to update the asset tag of computers in JAMF with an number passed from Snipe.
 def update_jamf_asset_tag(jamf_id, asset_tag):
     api_url = "{}/JSSResource/computers/id/{}".format(jamfpro_base, jamf_id)
     payload = """<?xml version="1.0" encoding="UTF-8"?><computer><general><id>{}</id><asset_tag>{}</asset_tag></general></computer>""".format(jamf_id, asset_tag)
+    logging.debug('Making Get request against: {}\nPayload for the PUT request is: {}\nThe username, password, and headers can be found near the beginning of the output.'.format(api_url, payload))
+    response = requests.put(api_url, auth=(jamf_api_user, jamf_api_password), data=payload, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    if response.status_code == 201:
+        logging.debug("Got a 201 response. Returning: True")
+        return True
+    elif b'policies.ratelimit.QuotaViolation' in response.content:
+        logging.info('JAMFPro responded with error code: {} - Policy Ratelimit Quota Violation - when we tried to look up id: {} Waiting a bit to retry the lookup.'.format(response, jamf_id))
+        logging.warning('JAMFPro Ratelimit exceeded: pausing ')
+        time.sleep(75)
+        logging.info("Finished waiting. Retrying update...")
+        newresponse = update_jamf_asset_tag(jamf_id, asset_tag)
+        return newresponse
+    if response.status_code == 200:
+        logging.debug("Got a 200 response code. Returning the response: {}".format(response))
+        return response.json()
+    else:
+        logging.warning('Got back an error response code:{} - {}'.format(response.status_code, response.content))
+        return None
+        
+# Function to update the asset tag of mobile devices in JAMF with an number passed from Snipe.
+def update_jamf_mobiledevice_asset_tag(jamf_id, asset_tag):
+    api_url = "{}/JSSResource/mobiledevices/id/{}".format(jamfpro_base, jamf_id)
+    payload = """<?xml version="1.0" encoding="UTF-8"?><mobiledevice><general><id>{}</id><asset_tag>{}</asset_tag></general></mobiledevice>""".format(jamf_id, asset_tag)
     logging.debug('Making Get request against: {}\nPayload for the PUT request is: {}\nThe username, password, and headers can be found near the beginning of the output.'.format(api_url, payload))
     response = requests.put(api_url, auth=(jamf_api_user, jamf_api_password), data=payload, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 201:
@@ -667,4 +690,9 @@ for jamf_type in jamf_types:
             if jamf['general']['asset_tag'] != snipe['rows'][0]['asset_tag']:
                 logging.info("JAMF doesn't have the same asset tag as SNIPE so we'll update it because it should be authoritative.")
                 if snipe['rows'][0]['asset_tag'][0].isdigit():
-                    update_jamf_asset_tag("{}".format(jamf['general']['id']), '{}'.format(snipe['rows'][0]['asset_tag']))
+                    if jamf_type == 'computers':
+                       update_jamf_asset_tag("{}".format(jamf['general']['id']), '{}'.format(snipe['rows'][0]['asset_tag']))
+                       loggin.info("Device is a computer, updating computer record")
+                    elseif jamf_type == `mobile_devices`
+                      update_jamf_mobiledevice_asset_tag("{}".format(jamf['general']['id']), '{}'.format(snipe['rows'][0]['asset_tag']))
+                      logging.info("Device is a mobile device, updating the mobile device record")
