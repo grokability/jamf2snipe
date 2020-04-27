@@ -94,7 +94,7 @@ if 'snipe-it' not in set(config):
     logging.debug("No valid config found in /etc Checking for a settings.conf in current directory ...")
     config.read("settings.conf")
 if 'snipe-it' not in set(config):
-    logging.debug("No valid config found in current folder.") 
+    logging.debug("No valid config found in current folder.")
     logging.error("No valid settings.conf was found. We'll need to quit while you figure out where the settings are at. You can check the README for valid locations.")
     raise SystemExit("Error: No valid settings.conf - Exiting.")
 
@@ -134,14 +134,14 @@ if 'api-mapping' in config:
     logging.error("Looks like you're using the old method for api-mapping. Please use computers-api-mapping and mobile_devices-api-mapping.")
     SETTINGS_CORRECT = False
 if not 'user-mapping' in config and (user_args.users or user_args.users_force or user_args.users_inverse):
-    logging.error("""You've chosen to check out assets to users in some capacity using a cmdline switch, but not specified how you want to 
+    logging.error("""You've chosen to check out assets to users in some capacity using a cmdline switch, but not specified how you want to
     search Snipe IT for the users from Jamf. Make sure you have a 'user-mapping' section in your settings.conf file.""")
     SETTINGS_CORRECT = False
 
 if not SETTINGS_CORRECT:
     raise SystemExit
 
-# Check the config file for valid jamf subsets. This is based off the JAMF API and if it's not right we can't map fields over to SNIPE properly. 
+# Check the config file for valid jamf subsets. This is based off the JAMF API and if it's not right we can't map fields over to SNIPE properly.
 logging.debug("Checking the settings.conf file for valid JAMF subsets of the JAMF API so mapping can occur properly.")
 for key in config['computers-api-mapping']:
     jamfsplit = config['computers-api-mapping'][key].split()
@@ -264,7 +264,7 @@ def search_jamf_mobile(jamf_id):
         logging.debug("Returning a null value for the function.")
         return None
 
-# Function to update the asset tag in JAMF with an number passed from Snipe.
+# Function to update the asset tag of computers in JAMF with an number passed from Snipe.
 def update_jamf_asset_tag(jamf_id, asset_tag):
     api_url = "{}/JSSResource/computers/id/{}".format(jamfpro_base, jamf_id)
     payload = """<?xml version="1.0" encoding="UTF-8"?><computer><general><id>{}</id><asset_tag>{}</asset_tag></general></computer>""".format(jamf_id, asset_tag)
@@ -279,6 +279,29 @@ def update_jamf_asset_tag(jamf_id, asset_tag):
         time.sleep(75)
         logging.info("Finished waiting. Retrying update...")
         newresponse = update_jamf_asset_tag(jamf_id, asset_tag)
+        return newresponse
+    if response.status_code == 200:
+        logging.debug("Got a 200 response code. Returning the response: {}".format(response))
+        return response.json()
+    else:
+        logging.warning('Got back an error response code:{} - {}'.format(response.status_code, response.content))
+        return None
+        
+# Function to update the asset tag of mobile devices in JAMF with an number passed from Snipe.
+def update_jamf_mobiledevice_asset_tag(jamf_id, asset_tag):
+    api_url = "{}/JSSResource/mobiledevices/id/{}".format(jamfpro_base, jamf_id)
+    payload = """<?xml version="1.0" encoding="UTF-8"?><mobile_device><general><id>{}</id><asset_tag>{}</asset_tag></general></mobile_device>""".format(jamf_id, asset_tag)
+    logging.debug('Making Get request against: {}\nPayload for the PUT request is: {}\nThe username, password, and headers can be found near the beginning of the output.'.format(api_url, payload))
+    response = requests.put(api_url, auth=(jamf_api_user, jamf_api_password), data=payload, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    if response.status_code == 201:
+        logging.debug("Got a 201 response. Returning: True")
+        return True
+    elif b'policies.ratelimit.QuotaViolation' in response.content:
+        logging.info('JAMFPro responded with error code: {} - Policy Ratelimit Quota Violation - when we tried to look up id: {} Waiting a bit to retry the lookup.'.format(response, jamf_id))
+        logging.warning('JAMFPro Ratelimit exceeded: pausing ')
+        time.sleep(75)
+        logging.info("Finished waiting. Retrying update...")
+        newresponse = update_jamf_mobiledevice_asset_tag(jamf_id, asset_tag)
         return newresponse
     if response.status_code == 200:
         logging.debug("Got a 200 response code. Returning the response: {}".format(response))
@@ -477,7 +500,7 @@ def checkout_snipe_asset(user, asset_id, checked_out_user=None):
         return response
 
 ### Run Testing ###
-# Report if we're verifying SSL or not. 
+# Report if we're verifying SSL or not.
 logging.info("SSL Verification is set to: {}".format(user_args.do_not_verify_ssl))
 
 # Do some tests to see if the hosts are up.
@@ -544,7 +567,7 @@ elif user_args.mobiles:
     TotalNumber = len(jamf_types['mobile_devices']['mobile_devices'])
 else:
     for jamf_type in jamf_types:
-        TotalNumber += len(jamf_types[jamf_type][jamf_type]) 
+        TotalNumber += len(jamf_types[jamf_type][jamf_type])
 
 # Make sure we have a good list.
 if jamf_computer_list is not None:
@@ -557,7 +580,7 @@ else:
 if user_args.dryrun:
     raise SystemExit("Dryrun: Complete.")
 
-# From this point on, we're editing data. 
+# From this point on, we're editing data.
 logging.info('Starting to Update Inventory')
 CurrentNumber = 0
 
@@ -652,10 +675,10 @@ for jamf_type in jamf_types:
                 jamf_time = jamf['general']['report_date']
             elif jamf_type == 'mobile_devices':
                 jamf_time = jamf['general']['last_inventory_update']
-            # Check to see that the JAMF record is newer than the previous Snipe update.
-            # if jamf_time > snipe_time:
-            if True: # uncomment for testing
-                logging.debug("Updating the Snipe asset because JAMF has a more recent timestamp: {} > {}".format(jamf_time, snipe_time))
+            # Check to see that the JAMF record is newer than the previous Snipe update, or if it is a new record in Snipe
+            if jamf_time > snipe_time or snipe is 'NoMatch':
+            # if True: # uncomment for testing
+                logging.debug("Updating the Snipe asset because JAMF has a more recent timestamp: {} > {} or the Snipe Record is new".format(jamf_time, snipe_time))
                 for snipekey in config['{}-api-mapping'.format(jamf_type)]:
                     jamfsplit = config['{}-api-mapping'.format(jamf_type)][snipekey].split()
                     for i, item in enumerate(jamfsplit):
@@ -704,8 +727,18 @@ for jamf_type in jamf_types:
                         checkout_snipe_asset(jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])], snipe_id, snipe['rows'][0]['assigned_to'])
                     else:
                         logging.info("Can't checkout {} since the status isn't set to deployable".format(jamf['general']['name']))
+
+            else:
+                logging.info("Snipe Record is newer than the JAMF record. Nothing to sync. If this wrong, then force an inventory update in JAMF")
+                logging.debug("Not updating the Snipe asset because Snipe has a more recent timestamp: {} < {}".format(jamf_time, snipe_time))
+
             # Update/Sync the Snipe Asset Tag Number back to JAMF
             if jamf['general']['asset_tag'] != snipe['rows'][0]['asset_tag']:
                 logging.info("JAMF doesn't have the same asset tag as SNIPE so we'll update it because it should be authoritative.")
                 if snipe['rows'][0]['asset_tag'][0].isdigit():
-                    update_jamf_asset_tag("{}".format(jamf['general']['id']), '{}'.format(snipe['rows'][0]['asset_tag']))
+                    if jamf_type == 'computers':
+                       update_jamf_asset_tag("{}".format(jamf['general']['id']), '{}'.format(snipe['rows'][0]['asset_tag']))
+                       loggin.info("Device is a computer, updating computer record")
+                    elif jamf_type == 'mobile_devices':
+                      update_jamf_mobiledevice_asset_tag("{}".format(jamf['general']['id']), '{}'.format(snipe['rows'][0]['asset_tag']))
+                      logging.info("Device is a mobile device, updating the mobile device record")
