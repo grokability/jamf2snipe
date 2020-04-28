@@ -205,7 +205,7 @@ def get_jamf_computers():
 def get_jamf_mobiles():
     api_url = '{0}/JSSResource/mobiledevices'.format(jamfpro_base)
     logging.debug('Calling for JAMF mobiles against: {}\n The username, passwords, and headers for this GET requestcan be found near the beginning of the output.'.format(api_url))
-    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders, hooks={'response': request_handler})
+    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         return response.json()
@@ -245,7 +245,7 @@ def search_jamf_asset(jamf_id):
 # Function to lookup a JAMF mobile asset by id.
 def search_jamf_mobile(jamf_id):
     api_url = "{}/JSSResource/mobiledevices/id/{}".format(jamfpro_base, jamf_id)
-    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders, hooks={'response': request_handler})
+    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         jsonresponse = response.json()
@@ -285,7 +285,7 @@ def update_jamf_asset_tag(jamf_id, asset_tag):
     else:
         logging.warning('Got back an error response code:{} - {}'.format(response.status_code, response.content))
         return None
-        
+
 # Function to update the asset tag of mobile devices in JAMF with an number passed from Snipe.
 def update_jamf_mobiledevice_asset_tag(jamf_id, asset_tag):
     api_url = "{}/JSSResource/mobiledevices/id/{}".format(jamfpro_base, jamf_id)
@@ -336,7 +336,7 @@ def get_snipe_models():
     response = requests.get(api_url, headers=snipeheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 200:
         jsonresponse = response.json()
-        logging.debug("Got a valid response that should have {} models.".format(jsonresponse['total']))
+        logging.info("Got a valid response that should have {} models.".format(jsonresponse['total']))
         if jsonresponse['total'] <= len(jsonresponse['rows']) :
             return jsonresponse
         else:
@@ -365,7 +365,7 @@ def get_snipe_user_id(username):
         'limit':1
     }
     logging.debug('The payload for the snipe user search is: {}'.format(payload))
-    response = requests.get(user_id_url, headers=snipeheaders, json=payload, hooks={'response': request_handler})
+    response = requests.get(user_id_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     try:
         return response.json()['rows'][0]['id']
     except:
@@ -399,9 +399,9 @@ def create_snipe_asset(payload):
 
 # Function that updates a snipe asset with a JSON payload
 def update_snipe_asset(snipe_id, payload):
-    api_url = '{}/api/v1/hardware/{}'.format(snipe_base, snipe_id, verify=user_args.do_not_verify_ssl)
+    api_url = '{}/api/v1/hardware/{}'.format(snipe_base, snipe_id)
     logging.debug('The payload for the snipe update is: {}'.format(payload))
-    response = requests.patch(api_url, headers=snipeheaders, json=payload, hooks={'response': request_handler})
+    response = requests.patch(api_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     # Verify that the payload updated properly.
     goodupdate = True
     if response.status_code == 200:
@@ -433,7 +433,7 @@ def checkin_snipe_asset(asset_id):
     else:
         return response
 
-# Functiono that checks out an asset in snipe
+# Function that checks out an asset in snipe
 def checkout_snipe_asset(user, asset_id, checked_out_user=None):
     logging.debug('Asset {} is being checked out to {}'.format(user, asset_id))
     user_id = get_snipe_user_id(user)
@@ -455,7 +455,7 @@ def checkout_snipe_asset(user, asset_id, checked_out_user=None):
     payload = {
         'checkout_to_type':'user',
         'assigned_user':user_id,
-        'note':'assigned by script from Jamf'
+        'note':'Assignment made automatically, via script from Jamf.'
     }
     logging.debug('The payload for the snipe checkin is: {}'.format(payload))
     response = requests.post(api_url, headers=snipeheaders, json=payload, hooks={'response': request_handler})
@@ -604,14 +604,14 @@ for jamf_type in jamf_types:
                     logging.debug("Mobile Device Detected, changing Asset Tag to: {}".format(jamf_asset_tag))
                 logging.info("Since no asset tag was found it is being set to: {}".format(jamf_asset_tag))
             else:
-                logging.info("Asset tag found in Jamf, setting it to: {}".format(jamf_asset_tag))            
+                logging.info("Asset tag found in Jamf, setting it to: {}".format(jamf_asset_tag))
             # Create the payload
             if jamf_type == 'mobile_devices':
                 logging.debug("Payload is being made for a mobile device")
                 newasset = {'asset_tag': jamf_asset_tag, 'model_id': modelnumbers['{}'.format(jamf['general']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}
             elif jamf_type == 'computer'
                 logging.debug("Payload is being made for a computer")
-                newasset = {'asset_tag': jamf_asset_tag,'model_id': modelnumbers['{}'.format(jamf['hardware']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}           
+                newasset = {'asset_tag': jamf_asset_tag,'model_id': modelnumbers['{}'.format(jamf['hardware']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}
             if jamf['general']['serial_number'] == 'Not Available':
                 logging.warning("The serial number is not available in JAMF. This is normal for DEP enrolled devices that have not yet checked in for the first time. Since there's no serial number yet, we'll skip it for now.")
                 continue
