@@ -12,6 +12,8 @@ optional arguments:
                       JAMFPro and Snipe-it instances, but exits before
                       updating or syncing any assets.
 -d, --debug           Sets logging to include additional DEBUG messages.
+--do_not_update_jamf  Does not update Jamf with the asset tags stored in
+                      Snipe.
 --do_not_verify_ssl   Skips SSL verification for all requests. Helpful when
                       you use self-signed certificate.
 -r, --ratelimited     Puts a half second delay between Snipe IT API calls to
