@@ -60,15 +60,15 @@ runtimeargs.add_argument("--dryrun", help="This checks your config and tries to 
 runtimeargs.add_argument("-d", "--debug", help="Sets logging to include additional DEBUG messages.", action="store_true")
 runtimeargs.add_argument('--do_not_verify_ssl', help="Skips SSL verification for all requests. Helpful when you use self-signed certificate.", action="store_false")
 runtimeargs.add_argument("-r", "--ratelimited", help="Puts a half second delay between Snipe IT API calls to adhere to the standard 120/minute rate limit", action="store_true")
-runtimeargs.add_argument("--no_search", help="Doesn't search for any users if the specified fields in Jamf and Snipe don't match - case insensitive", action="store_true")
 runtimeargs.add_argument("-f", "--force", help="Updates the Snipe asset with information from Jamf every time, despite what the timestamps indicate.", action="store_true")
 user_opts = runtimeargs.add_mutually_exclusive_group()
 user_opts.add_argument("-u", "--users", help="Checks out the item to the current user in Jamf if it's not already deployed", action="store_true")
 user_opts.add_argument("-ui", "--users_inverse", help="Checks out the item to the current user in Jamf if it's already deployed", action="store_true")
 user_opts.add_argument("-uf", "--users_force", help="Checks out the item to the user specified in Jamf no matter what", action="store_true")
+user_opts.add_argument("-uns", "--users_no_search", help="Doesn't search for any users if the specified fields in Jamf and Snipe don't match. (case insensitive)", action="store_true")
 type_opts = runtimeargs.add_mutually_exclusive_group()
 type_opts.add_argument("-m", "--mobiles", help="Runs against the Jamf mobiles endpoint only.", action="store_true")
-type_opts.add_argument("-c", "--computers", help="Runs against the Jamf computers enpoint only.", action="store_true")
+type_opts.add_argument("-c", "--computers", help="Runs against the Jamf computers endpoint only.", action="store_true")
 user_args = runtimeargs.parse_args()
 
 # Notify users they're going to get a wall of text in verbose mode.
@@ -388,7 +388,7 @@ def get_snipe_user_id(username):
             if str(value).lower() == username:
                 id = user['id']
                 return id
-    if user_args.no_search:
+    if user_args.users_no_search:
         logging.debug("No matches in snipe_users for {}, not querying the API for the next closest match since we've been told not to".format(username))
         return "NotFound"
     logging.debug('No matches in snipe_users for {}, querying the API for the next closest match'.format(username))
