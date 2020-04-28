@@ -2,7 +2,7 @@
 ## Import/Sync Computers from JAMF to Snipe-IT
 ```
 usage: jamf2snipe [-h] [-v] [--dryrun] [-d] [--do_not_verify_ssl] [-r]
-                  [-u | -ui | -uf] [-m | -c]
+                  [--no_search] [-u | -ui | -uf] [-m | -c]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -14,8 +14,10 @@ optional arguments:
   -d, --debug           Sets logging to include additional DEBUG messages.
   --do_not_verify_ssl   Skips SSL verification for all requests. Helpful when
                         you use self-signed certificate.
-  -r, --ratelimited     Puts a half second delay between Snipe IT API calls to
-                        adhere to the standard 120/minute rate limit
+  -r, --ratelimited     Puts a half second delay between Snipe IT API calls
+                        to adhere to the standard 120/minute rate limit
+  --no_search           Doesn't search for any users if the specified fields
+                        in Jamf and Snipe don't match - case insensitive
   -u, --users           Checks out the item to the current user in Jamf if
                         it's not already deployed
   -ui, --users_inverse  Checks out the item to the current user in Jamf if
