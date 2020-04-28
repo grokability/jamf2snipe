@@ -425,7 +425,7 @@ def checkin_snipe_asset(asset_id):
         'note':'checked in by script from Jamf'
     }
     logging.debug('The payload for the snipe checkin is: {}'.format(payload))
-    response = requests.post(api_url, headers=snipeheaders, json=payload, hooks={'response': request_handler})
+    response = requests.post(api_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     logging.debug('The response from Snipe IT is: {}'.format(response.json()))
     if response.status_code == 200:
         logging.debug("Got back status code: 200 - {}".format(response.content))
@@ -458,7 +458,7 @@ def checkout_snipe_asset(user, asset_id, checked_out_user=None):
         'note':'Assignment made automatically, via script from Jamf.'
     }
     logging.debug('The payload for the snipe checkin is: {}'.format(payload))
-    response = requests.post(api_url, headers=snipeheaders, json=payload, hooks={'response': request_handler})
+    response = requests.post(api_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     logging.debug('The response from Snipe IT is: {}'.format(response.json()))
     if response.status_code == 200:
         logging.debug("Got back status code: 200 - {}".format(response.content))
