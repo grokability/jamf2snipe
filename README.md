@@ -1,4 +1,4 @@
-# jamf2snipe 
+# jamf2snipe
 ## Import/Sync Computers from JAMF to Snipe-IT
 ```
 usage: jamf2snipe [-h] [-v] [--dryrun] [-d] [--do_not_verify_ssl] [-r]
@@ -16,6 +16,8 @@ optional arguments:
                         you use self-signed certificate.
   -r, --ratelimited     Puts a half second delay between Snipe IT API calls to
                         adhere to the standard 120/minute rate limit
+  -f, --force           Updates the Snipe asset with information from Jamf
+                        every time, despite what the timestamps indicate.
   -u, --users           Checks out the item to the current user in Jamf if
                         it's not already deployed
   -ui, --users_inverse  Checks out the item to the current user in Jamf if
@@ -109,7 +111,7 @@ Some example API mappings can be found below:
 - OS Version:			`_snipeit_<your_OS_version_custom_field_id> = hardware os_version`
 - Extension Attribute:    `_snipe_it_<your_custom_field_id> = extension_attributes <attribute id from jamf>`
 
-More information can be found in the ./jamf2snipe file about associations and [valid subsets](https://github.com/ParadoxGuitarist/jamf2snipe/blob/master/jamf2snipe#L33). 
+More information can be found in the ./jamf2snipe file about associations and [valid subsets](https://github.com/ParadoxGuitarist/jamf2snipe/blob/master/jamf2snipe#L33).
 
 ## Testing
 
