@@ -747,7 +747,7 @@ for jamf_type in jamf_types:
             # The user arg below is set to false if it's called, so this would fail if the user called it. 
             if (jamf['general']['asset_tag'] != snipe['rows'][0]['asset_tag']) and user_args.do_not_update_jamf :
                 logging.info("JAMF doesn't have the same asset tag as SNIPE so we'll update it because it should be authoritative.")
-                if snipe['rows'][0]['asset_tag'][0].isdigit():
+                if snipe['rows'][0]['asset_tag'][0]:
                     if jamf_type == 'computers':
                        update_jamf_asset_tag("{}".format(jamf['general']['id']), '{}'.format(snipe['rows'][0]['asset_tag']))
                        logging.info("Device is a computer, updating computer record")
