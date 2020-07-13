@@ -511,11 +511,13 @@ logging.info("SSL Verification is set to: {}".format(user_args.do_not_verify_ssl
 logging.info("Running tests to see if hosts are up.")
 try:
     SNIPE_UP = True if requests.get(snipe_base, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}).status_code is 200 else False
-except:
+except Exception as e:
+    logging.exception(e)
     SNIPE_UP = False
 try:
     JAMF_UP = True if requests.get(jamfpro_base, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}).status_code in (200, 401) else False
-except:
+except Exception as e:
+    logging.exception(e)
     JAMF_UP = False
 
 if SNIPE_UP is False:
