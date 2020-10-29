@@ -444,6 +444,10 @@ def update_snipe_asset(snipe_id, payload):
         logging.debug("Got back status code: 200 - Checking the payload updated properly: If you error here it's because you configure the API mapping right.")
         jsonresponse = response.json()
         for key in payload:
+            if key == 'purchase_date':
+                payload[key] = payload[key] + " 00:00:00"
+            if payload[key] is '':
+                payload[key] = None
             if jsonresponse['payload'][key] != payload[key]:
                 logging.warning('Unable to update ID: {}. We failed to update the {} field with "{}"'.format(snipe_id, key, payload[key]))
                 goodupdate = False
