@@ -52,6 +52,12 @@ import time
 import configparser
 import argparse
 import logging
+import os
+
+class EnvironmentInterpolation(configparser.BasicInterpolation):
+    def before_get(self, parser, section, option, value, defaults):
+        value = super().before_get(parser, section, option, value, defaults)
+        return os.path.expandvars(value)
 
 # Set us up for using runtime arguments by defining them.
 runtimeargs = argparse.ArgumentParser()
@@ -86,7 +92,7 @@ if user_args.dryrun:
 
 # Find a valid settings.conf file.
 logging.info("Searching for a valid settings.conf file.")
-config = configparser.ConfigParser()
+config = configparser.ConfigParser(interpolation=EnvironmentInterpolation())
 logging.debug("Checking for a settings.conf in /opt/jamf2snipe ...")
 config.read("/opt/jamf2snipe/settings.conf")
 if 'snipe-it' not in set(config):
