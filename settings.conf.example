@@ -4,17 +4,17 @@ username = a-valid-username
 password = a-valid-password
 
 [snipe-it]
-#Required
+# Required
 url = http://FQDN.your.snipe.instance.com
 apikey = YOUR-API-KEY-HERE
 manufacturer_id = 2
-defaultStatus = 2 
+defaultStatus = 2
 computer_model_category_id = 2
 mobile_model_category_id = 3
-#Not Required, uncomment to use
-#computer_custom_fieldset_id = 3 
-#mobile_custom_fieldset_id = 4 
-#asset_tag = general serial_number # If not specified, defaults to jamf-{id} or jamf-m-{id}
+# Not Required, uncomment to use
+# computer_custom_fieldset_id = 3
+# mobile_custom_fieldset_id = 4
+# asset_tag = general serial_number # If not specified, defaults to jamf-{id} or jamf-m-{id}
 
 [computers-api-mapping]
 name = general name
@@ -22,7 +22,7 @@ _snipeit_mac_address_1 = general mac_address
 
 
 [mobile_devices-api-mapping]
-_snipeit_imei_4	= network imei
+_snipeit_imei_4 = network imei
 name = general name
 
 [user-mapping] # The field from jamf that you want to search Snipe with
