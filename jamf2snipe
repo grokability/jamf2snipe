@@ -727,7 +727,7 @@ for jamf_type in jamf_types:
                         needsupdate = False
                         for CustomField in snipe['rows'][0]['custom_fields']:
                             if snipe['rows'][0]['custom_fields'][CustomField]['field'] == snipekey :
-                                if snipe['rows'][0]['custom_fields'][CustomField]['value'] != latestvalue:
+                                if snipe['rows'][0]['custom_fields'][CustomField]['value'] != str(latestvalue):
                                     logging.debug("Found the field, and the value needs to be updated from {} to {}".format(snipe['rows'][0]['custom_fields'][CustomField]['value'], latestvalue))
                                     needsupdate = True
                         if needsupdate is True:
