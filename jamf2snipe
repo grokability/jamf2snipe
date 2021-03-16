@@ -217,7 +217,7 @@ def get_jamf_mobiles():
         logging.warning('JAMFPro Ratelimit exceeded: pausing ')
         time.sleep(75)
         logging.info("Finished waiting. Retrying lookup...")
-        newresponse = get_jamf_computers()
+        newresponse = get_jamf_mobiles()
         return newresponse
     else:
         logging.warning('Received an invalid status code when trying to retreive JAMF Device list:{} - {}'.format(response.status_code, response.content))
