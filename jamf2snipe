@@ -204,6 +204,28 @@ def get_jamf_computers():
         logging.debug("Returning a null value for the function.")
         return None
 
+# Function to make the API call for JAMF devices in group
+def get_jamf_computers_by_group(jamf_id):
+    api_url = '{0}/JSSResource/computergroups/id/{1}'.format(jamfpro_base, jamf_id)
+    logging.debug('Calling for JAMF computers against: {}\n The username, passwords, and headers for this GET requestcan be found near the beginning of the output.'.format(api_url))
+    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    if response.status_code == 200:
+        logging.debug("Got back a valid 200 response code.")
+        jsonresponse = response.json()
+        logging.debug("Returning: {}".format(jsonresponse['computer_group']))
+        return jsonresponse['computer_group']
+    elif b'policies.ratelimit.QuotaViolation' in response.content:
+        logging.info('JAMFPro responded with error code: {} - Policy Ratelimit Quota Violation - when we tried to get a list of computers Waiting a bit to retry the lookup.'.format(response))
+        logging.warning('JAMFPro Ratelimit exceeded: pausing ')
+        time.sleep(75)
+        logging.info("Finished waiting. Retrying lookup...")
+        newresponse = get_jamf_computers_by_group(jamf_id)
+        return newresponse
+    else:
+        logging.warning('Received an invalid status code when trying to retreive JAMF Device list:{} - {}'.format(response.status_code, response.content))
+        logging.debug("Returning a null value for the function.")
+        return None
+
 # Function to make the API call for all JAMF mobile devices
 def get_jamf_mobiles():
     api_url = '{0}/JSSResource/mobiledevices'.format(jamfpro_base)
@@ -218,6 +240,28 @@ def get_jamf_mobiles():
         time.sleep(75)
         logging.info("Finished waiting. Retrying lookup...")
         newresponse = get_jamf_mobiles()
+        return newresponse
+    else:
+        logging.warning('Received an invalid status code when trying to retreive JAMF Device list:{} - {}'.format(response.status_code, response.content))
+        logging.debug("Returning a null value for the function.")
+        return None
+
+# Function to make the API call for all JAMF mobile devices in group
+def get_jamf_mobiles_by_group(jamf_id):
+    api_url = '{0}/JSSResource/mobiledevicegroups/id/{1}'.format(jamfpro_base, jamf_id)
+    logging.debug('Calling for JAMF mobiles against: {}\n The username, passwords, and headers for this GET requestcan be found near the beginning of the output.'.format(api_url))
+    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    if response.status_code == 200:
+        logging.debug("Got back a valid 200 response code.")
+        jsonresponse = response.json()
+        logging.debug("Returning: {}".format(jsonresponse['mobile_device_group']))
+        return jsonresponse['mobile_device_group']
+    elif b'policies.ratelimit.QuotaViolation' in response.content:
+        logging.info('JAMFPro responded with error code: {} - Policy Ratelimit Quota Violation - when we tried to get a list of mobiles Waiting a bit to retry the lookup.'.format(response))
+        logging.warning('JAMFPro Ratelimit exceeded: pausing ')
+        time.sleep(75)
+        logging.info("Finished waiting. Retrying lookup...")
+        newresponse = get_jamf_mobiles_by_group(jamf_id)
         return newresponse
     else:
         logging.warning('Received an invalid status code when trying to retreive JAMF Device list:{} - {}'.format(response.status_code, response.content))
@@ -451,16 +495,16 @@ def update_snipe_asset(snipe_id, payload):
             logging.error('Unable to update ID: {}. Error "{}"'.format(snipe_id, jsonresponse['messages']))
             goodupdate = False
         else:
-        for key in payload:
-            if key == 'purchase_date':
-                payload[key] = payload[key] + " 00:00:00"
-            if payload[key] is '':
-                payload[key] = None
-            if jsonresponse['payload'][key] != payload[key]:
-                logging.warning('Unable to update ID: {}. We failed to update the {} field with "{}"'.format(snipe_id, key, payload[key]))
-                goodupdate = False
-            else:
-                logging.info("Sucessfully updated {} with: {}".format(key, payload[key]))
+            for key in payload:
+                if key == 'purchase_date':
+                    payload[key] = payload[key] + " 00:00:00"
+                if payload[key] is '':
+                    payload[key] = None
+                if jsonresponse['payload'][key] != payload[key]:
+                    logging.warning('Unable to update ID: {}. We failed to update the {} field with "{}"'.format(snipe_id, key, payload[key]))
+                    goodupdate = False
+                else:
+                    logging.info("Sucessfully updated {} with: {}".format(key, payload[key]))
         return goodupdate
     else:
         logging.error('Whoops. Got an error status code while updating ID {}: {} - {}'.format(snipe_id, response.status_code, response.content))
@@ -565,8 +609,17 @@ logging.info("Our list of models has {} entries.".format(len(modelnumbers)))
 logging.debug("Here's the list of the {} models and their id's that we were able to collect:\n{}".format(len(modelnumbers), modelnumbers))
 
 # Get the IDS of all active assets.
-jamf_computer_list = get_jamf_computers()
-jamf_mobile_list = get_jamf_mobiles()
+if 'computer_group_id' in config['jamf'] and config['jamf']['computer_group_id']:
+    logging.info("Getting list of computers from JAMF by computer group id.")
+    jamf_computer_list = get_jamf_computers_by_group(config['jamf']['computer_group_id'])
+else:
+    jamf_computer_list = get_jamf_computers()
+
+if 'mobile_group_id' in config['jamf'] and config['jamf']['mobile_group_id']:
+    logging.info("Getting list of mobiles from JAMF by mobile group id.")
+    jamf_mobile_list = get_jamf_mobiles_by_group(config['jamf']['mobile_group_id'])
+else:
+    jamf_mobile_list = get_jamf_mobiles()
 jamf_types = {
     'computers': jamf_computer_list,
     'mobile_devices': jamf_mobile_list
@@ -728,23 +781,23 @@ for jamf_type in jamf_types:
                 updates = {}
                 for snipekey in config['{}-api-mapping'.format(jamf_type)]:
                     try:
-                    jamfsplit = config['{}-api-mapping'.format(jamf_type)][snipekey].split()
-                    for i, item in enumerate(jamfsplit):
-                        try:
-                            item = int(item)
-                        except ValueError:
-                            logging.debug('{} is not an integer'.format(item))
-                        if i == 0:
-                            jamf_value = jamf[item]
-                        else:
-                            if jamfsplit[0] == 'extension_attributes':
-                                for attribute in jamf_value:
-                                    if attribute['id'] == item:
-                                        jamf_value = attribute['value']
+                        jamfsplit = config['{}-api-mapping'.format(jamf_type)][snipekey].split()
+                        for i, item in enumerate(jamfsplit):
+                            try:
+                                item = int(item)
+                            except ValueError:
+                                logging.debug('{} is not an integer'.format(item))
+                            if i == 0:
+                                jamf_value = jamf[item]
                             else:
-                                jamf_value = jamf_value[item]
-                    payload = {snipekey: jamf_value}
-                    latestvalue = jamf_value
+                                if jamfsplit[0] == 'extension_attributes':
+                                    for attribute in jamf_value:
+                                        if attribute['id'] == item:
+                                            jamf_value = attribute['value']
+                                else:
+                                    jamf_value = jamf_value[item]
+                        payload = {snipekey: jamf_value}
+                        latestvalue = jamf_value
                     except KeyError:
                         logging.debug("Skipping the payload, because the JAMF key we're mapping to doesn't exist")
                         continue
