@@ -428,10 +428,14 @@ def create_snipe_asset(payload):
     logging.debug(response.text)
     if response.status_code == 200:
         logging.debug("Got back status code: 200 - {}".format(response.content))
+        jsonresponse = response.json()
+        if jsonresponse['status'] == "error":
+            logging.error('Asset creation failed for asset {} with error {}'.format(payload['name'],jsonresponse['messages']))
+            return 'ERROR', response
         return 'AssetCreated', response
     else:
         logging.error('Asset creation failed for asset {} with error {}'.format(payload['name'],response.text))
-        return response
+        return 'ERROR', response
 
 # Function that updates a snipe asset with a JSON payload
 def update_snipe_asset(snipe_id, payload):
@@ -666,6 +670,27 @@ for jamf_type in jamf_types:
                 logging.warning("The serial number is not available in JAMF. This is normal for DEP enrolled devices that have not yet checked in for the first time. Since there's no serial number yet, we'll skip it for now.")
                 continue
             else:
+                for snipekey in config['{}-api-mapping'.format(jamf_type)]:
+                    jamfsplit = config['{}-api-mapping'.format(jamf_type)][snipekey].split()
+                    try:
+                        for i, item in enumerate(jamfsplit):
+                            try:
+                                item = int(item)
+                            except ValueError:
+                                logging.debug('{} is not an integer'.format(item))
+                            if i == 0:
+                                jamf_value = jamf[item]
+                            else:
+                                if jamfsplit[0] == 'extension_attributes':
+                                    for attribute in jamf_value:
+                                        if attribute['id'] == item:
+                                            jamf_value = attribute['value']
+                                else:
+                                    jamf_value = jamf_value[item]
+                        newasset[snipekey] = jamf_value
+                    except KeyError:
+                        continue
+
                 new_snipe_asset = create_snipe_asset(newasset)
                 if new_snipe_asset[0] != "AssetCreated":
                     continue
