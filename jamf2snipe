@@ -447,6 +447,10 @@ def update_snipe_asset(snipe_id, payload):
     if response.status_code == 200:
         logging.debug("Got back status code: 200 - Checking the payload updated properly: If you error here it's because you configure the API mapping right.")
         jsonresponse = response.json()
+        if jsonresponse['status'] == "error":
+            logging.error('Unable to update ID: {}. Error "{}"'.format(snipe_id, jsonresponse['messages']))
+            goodupdate = False
+        else:
         for key in payload:
             if key == 'purchase_date':
                 payload[key] = payload[key] + " 00:00:00"
@@ -459,7 +463,7 @@ def update_snipe_asset(snipe_id, payload):
                 logging.info("Sucessfully updated {} with: {}".format(key, payload[key]))
         return goodupdate
     else:
-        logging.warning('Whoops. Got an error status code while updating ID {}: {} - {}'.format(snipe_id, response.status_code, response.content))
+        logging.error('Whoops. Got an error status code while updating ID {}: {} - {}'.format(snipe_id, response.status_code, response.content))
         return False
 
 # Function that checks in an asset in snipe
@@ -721,7 +725,9 @@ for jamf_type in jamf_types:
                 if user_args.force:
                     logging.debug("Forced the Update regardless of the timestamps below.")
                 logging.debug("Updating the Snipe asset because JAMF has a more recent timestamp: {} > {} or the Snipe Record is new".format(jamf_time, snipe_time))
+                updates = {}
                 for snipekey in config['{}-api-mapping'.format(jamf_type)]:
+                    try:
                     jamfsplit = config['{}-api-mapping'.format(jamf_type)][snipekey].split()
                     for i, item in enumerate(jamfsplit):
                         try:
@@ -739,12 +745,15 @@ for jamf_type in jamf_types:
                                 jamf_value = jamf_value[item]
                     payload = {snipekey: jamf_value}
                     latestvalue = jamf_value
+                    except KeyError:
+                        logging.debug("Skipping the payload, because the JAMF key we're mapping to doesn't exist")
+                        continue
 
                     # Need to check that we're not needlessly updating the asset.
                     # If it's a custom value it'll fail the first section and send it to except section that will parse custom sections.
                     try:
                         if snipe['rows'][0][snipekey] != latestvalue:
-                            update_snipe_asset(snipe_id, payload)
+                            updates.update(payload)
                         else:
                             logging.debug("Skipping the payload, because it already exits.")
                     except:
@@ -756,9 +765,13 @@ for jamf_type in jamf_types:
                                     logging.debug("Found the field, and the value needs to be updated from {} to {}".format(snipe['rows'][0]['custom_fields'][CustomField]['value'], latestvalue))
                                     needsupdate = True
                         if needsupdate is True:
-                            update_snipe_asset(snipe_id, payload)
+                            updates.update(payload)
                         else:
                             logging.debug("Skipping the payload, because it already exists, or the Snipe key we're mapping to doesn't.")
+
+                if updates:
+                    update_snipe_asset(snipe_id, updates)
+                
                 if ((user_args.users or user_args.users_inverse) and (snipe['rows'][0]['assigned_to'] == None) == user_args.users) or user_args.users_force:
 
                     if snipe['rows'][0]['status_label']['status_meta'] in ('deployable', 'deployed'):
