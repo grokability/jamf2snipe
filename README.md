@@ -117,6 +117,16 @@ Some example API mappings can be found below:
 
 More information can be found in the ./jamf2snipe file about associations and [valid subsets](https://github.com/ParadoxGuitarist/jamf2snipe/blob/master/jamf2snipe#L33).
 
+### Environment variables
+
+Config values can be set through environment variables, e.g.:
+```
+[jamf]
+url = $JAMF_URL
+username = $JAMF_USERNAME
+password = $JAMF_PASSWORD
+```
+
 ## Testing
 
 It is *always* a good idea to create a test environment to ensure everything works as expected before running anything in production.
