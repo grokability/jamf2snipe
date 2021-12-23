@@ -482,6 +482,9 @@ def checkin_snipe_asset(asset_id):
 # Function that checks out an asset in snipe
 def checkout_snipe_asset(user, asset_id, checked_out_user=None):
     logging.debug('Asset {} is being checked out to {}'.format(user, asset_id))
+    if user == '':
+        logging.info("Checking in {}".format(asset_id))
+        return checkin_snipe_asset(asset_id)
     user_id = get_snipe_user_id(user)
     if user_id == 'NotFound':
         logging.info("User {} not found".format(user))
