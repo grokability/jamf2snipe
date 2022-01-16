@@ -46,8 +46,10 @@ Lastly, if the asset_tag field is blank in JAMF when it is being created in Snip
 
 - Python3 is installed on your system with the requests, json, time, and configparser python libs installed.
 - Network access to both your JAMF and Snipe-IT environments.
-- A JAMF username and password that has read & write permissions for computer assets.
+- A JAMF username and password that has read & write permissions for computer assets, mobile device assets, and users.
   - Computers: Read, Update
+  - Mobile Devices: Read, Update
+  - Users: Read, Update
 - Snipe API key for a user that has edit/create permissions for assets and models. Snipe-IT documentation instructions for creating API keys: [https://snipe-it.readme.io/reference#generating-api-tokens](https://snipe-it.readme.io/reference#generating-api-tokens)
 
 ## Installation:
