@@ -8,12 +8,12 @@ password = a-valid-password
 url = https://FQDN.your.snipe.instance.com
 apikey = YOUR-API-KEY-HERE
 manufacturer_id = 2
-defaultStatus = 2 
+defaultStatus = 2
 computer_model_category_id = 2
 mobile_model_category_id = 3
 #Not Required, uncomment to use
-#computer_custom_fieldset_id = 3 
-#mobile_custom_fieldset_id = 4 
+#computer_custom_fieldset_id = 3
+#mobile_custom_fieldset_id = 4
 #asset_tag = general serial_number # If not specified, defaults to jamf-{id} or jamf-m-{id}
 
 [computers-api-mapping]
