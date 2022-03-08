@@ -492,7 +492,7 @@ def update_snipe_asset(snipe_id, payload):
     if response.status_code == 200:
         logging.debug("Got back status code: 200 - Checking the payload updated properly: If you error here it's because you configure the API mapping right.")
         jsonresponse = response.json()
-        # Check if there's an Error and Log it, or parse the payload. 
+        # Check if there's an Error and Log it, or parse the payload.
         if jsonresponse['status'] == "error":
             logging.error('Unable to update ID: {}. Error "{}"'.format(snipe_id, jsonresponse['messages']))
             goodupdate = False
@@ -675,6 +675,14 @@ for jamf_type in jamf_types:
         if jamf == None:
             continue
 
+        # If the entry doesn't contain a serial, then we need to skip this entry.
+        if jamf['general']['serial_number'] == 'Not Available':
+            logging.warning("The serial number is not available in JAMF. This is normal for DEP enrolled devices that have not yet checked in for the first time and for personal mobile devices. Since there's no serial number yet, we'll skip it for now.")
+            continue
+        if jamf['general']['serial_number'] == None:
+            logging.warning("The serial number is not available in JAMF. This is normal for DEP enrolled devices that have not yet checked in for the first time and for personal mobile devices. Since there's no serial number yet, we'll skip it for now.")
+            continue
+
         # Check that the model number exists in snipe, if not create it.
         if jamf_type == 'computers':
             if jamf['hardware']['model_identifier'] not in modelnumbers:
@@ -725,9 +733,6 @@ for jamf_type in jamf_types:
             elif jamf_type == 'computers':
                 logging.debug("Payload is being made for a computer")
                 newasset = {'asset_tag': jamf_asset_tag,'model_id': modelnumbers['{}'.format(jamf['hardware']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}
-            if jamf['general']['serial_number'] == 'Not Available':
-                logging.warning("The serial number is not available in JAMF. This is normal for DEP enrolled devices that have not yet checked in for the first time. Since there's no serial number yet, we'll skip it for now.")
-                continue
             else:
                 for snipekey in config['{}-api-mapping'.format(jamf_type)]:
                     jamfsplit = config['{}-api-mapping'.format(jamf_type)][snipekey].split()
@@ -749,7 +754,7 @@ for jamf_type in jamf_types:
                         newasset[snipekey] = jamf_value
                     except KeyError:
                         continue
-                # Reset the payload without the asset_tag if auto_incrementing flag is set. 
+                # Reset the payload without the asset_tag if auto_incrementing flag is set.
                 if user_args.auto_incrementing:
                     newasset.pop('asset_tag', None)
                 new_snipe_asset = create_snipe_asset(newasset)
@@ -828,7 +833,7 @@ for jamf_type in jamf_types:
 
                 if updates:
                     update_snipe_asset(snipe_id, updates)
-                
+
                 if ((user_args.users or user_args.users_inverse) and (snipe['rows'][0]['assigned_to'] == None) == user_args.users) or user_args.users_force:
 
                     if snipe['rows'][0]['status_label']['status_meta'] in ('deployable', 'deployed'):
@@ -845,7 +850,7 @@ for jamf_type in jamf_types:
                 logging.debug("Not updating the Snipe asset because Snipe has a more recent timestamp: {} < {}".format(jamf_time, snipe_time))
 
             # Update/Sync the Snipe Asset Tag Number back to JAMF
-            # The user arg below is set to false if it's called, so this would fail if the user called it. 
+            # The user arg below is set to false if it's called, so this would fail if the user called it.
             if (jamf['general']['asset_tag'] != snipe['rows'][0]['asset_tag']) and user_args.do_not_update_jamf :
                 logging.info("JAMF doesn't have the same asset tag as SNIPE so we'll update it because it should be authoritative.")
                 if snipe['rows'][0]['asset_tag'][0]:
