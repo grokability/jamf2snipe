@@ -1,7 +1,6 @@
 [jamf]
 url = https://yourinstance.jamfcloud.com
-username = a-valid-username
-password = a-valid-password
+apikey = YOUR-API-KEY-HERE
 
 [snipe-it]
 #Required
