@@ -107,13 +107,13 @@ logging.info("Great, we found a settings file. Let's get started by parsing all 
 # This is the address, cname, or FQDN for your JamfPro instance.
 jamfpro_base = config['jamf']['url']
 logging.info("The configured JAMFPro base url is: {}".format(jamfpro_base))
-jamf_apiKey = config['jamf']['apiKey']
-logging.debug("The API key you provided to access the Jamf is: {}".format(jamf_apiKey))
+jamf_apiKey = config['jamf']['apikey']
+logging.debug("The API key you provided for Jamf is: {}".format(jamf_apiKey))
 
 # This is the address, cname, or FQDN for your snipe-it instance.
 snipe_base = config['snipe-it']['url']
 logging.info("The configured Snipe-IT base url is: {}".format(snipe_base))
-snipe_apiKey = config['snipe-it']['apiKey']
+snipe_apiKey = config['snipe-it']['apikey']
 logging.debug("The API key you provided for Snipe is: {}".format(snipe_apiKey))
 defaultStatus = config['snipe-it']['defaultStatus']
 logging.info("The default status we'll be setting updated computer to is: {} (I sure hope this is a number or something is probably wrong)".format(defaultStatus))
