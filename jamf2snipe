@@ -123,7 +123,7 @@ logging.info("The configured JAMFPro base url is: {} (Pretty sure this needs to 
 # Headers for the API call.
 
 logging.info("Creating the headers we'll need for API calls")
-jamfheaders = {'Accept': 'application/json'}
+jamfheaders = {'Authorization': 'Bearer {}'.format(jamf_apiKey),'Accept': 'application/json','Content-Type':'application/json'}
 snipeheaders = {'Authorization': 'Bearer {}'.format(snipe_apiKey),'Accept': 'application/json','Content-Type':'application/json'}
 logging.debug('Request headers for JamfPro will be: {}\nRequest headers for Snipe will be: {}'.format(jamfheaders, snipeheaders))
 
