@@ -107,16 +107,14 @@ logging.info("Great, we found a settings file. Let's get started by parsing all 
 # This is the address, cname, or FQDN for your JamfPro instance.
 jamfpro_base = config['jamf']['url']
 logging.info("The configured JAMFPro base url is: {}".format(jamfpro_base))
-jamf_api_user = config['jamf']['username']
-logging.info("The configured JAMFPro username we'll be connecting with is: {}".format(jamf_api_user))
-jamf_api_password = config['jamf']['password']
-logging.debug("The configured password to access the API is: {}".format(jamf_api_password))
+jamf_apiKey = config['jamf']['apikey']
+logging.debug("The API key you provided for Jamf is: {}".format(jamf_apiKey))
 
 # This is the address, cname, or FQDN for your snipe-it instance.
 snipe_base = config['snipe-it']['url']
 logging.info("The configured Snipe-IT base url is: {}".format(snipe_base))
-apiKey = config['snipe-it']['apiKey']
-logging.debug("The API key you provided for Snipe is: {}".format(apiKey))
+snipe_apiKey = config['snipe-it']['apikey']
+logging.debug("The API key you provided for Snipe is: {}".format(snipe_apiKey))
 defaultStatus = config['snipe-it']['defaultStatus']
 logging.info("The default status we'll be setting updated computer to is: {} (I sure hope this is a number or something is probably wrong)".format(defaultStatus))
 apple_manufacturer_id = config['snipe-it']['manufacturer_id']
@@ -125,8 +123,8 @@ logging.info("The configured JAMFPro base url is: {} (Pretty sure this needs to 
 # Headers for the API call.
 
 logging.info("Creating the headers we'll need for API calls")
-jamfheaders = {'Accept': 'application/json'}
-snipeheaders = {'Authorization': 'Bearer {}'.format(apiKey),'Accept': 'application/json','Content-Type':'application/json'}
+jamfheaders = {'Authorization': 'Bearer {}'.format(jamf_apiKey),'Accept': 'application/json','Content-Type':'application/json'}
+snipeheaders = {'Authorization': 'Bearer {}'.format(snipe_apiKey),'Accept': 'application/json','Content-Type':'application/json'}
 logging.debug('Request headers for JamfPro will be: {}\nRequest headers for Snipe will be: {}'.format(jamfheaders, snipeheaders))
 
 # Check the config file for correct headers
@@ -189,7 +187,7 @@ def request_handler(r, *args, **kwargs):
 def get_jamf_computers():
     api_url = '{0}/JSSResource/computers'.format(jamfpro_base)
     logging.debug('Calling for JAMF computers against: {}\n The username, passwords, and headers for this GET requestcan be found near the beginning of the output.'.format(api_url))
-    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = requests.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         return response.json()
@@ -209,7 +207,7 @@ def get_jamf_computers():
 def get_jamf_computers_by_group(jamf_id):
     api_url = '{0}/JSSResource/computergroups/id/{1}'.format(jamfpro_base, jamf_id)
     logging.debug('Calling for JAMF computers against: {}\n The username, passwords, and headers for this GET requestcan be found near the beginning of the output.'.format(api_url))
-    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = requests.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         jsonresponse = response.json()
@@ -231,7 +229,7 @@ def get_jamf_computers_by_group(jamf_id):
 def get_jamf_mobiles():
     api_url = '{0}/JSSResource/mobiledevices'.format(jamfpro_base)
     logging.debug('Calling for JAMF mobiles against: {}\n The username, passwords, and headers for this GET requestcan be found near the beginning of the output.'.format(api_url))
-    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = requests.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         return response.json()
@@ -251,7 +249,7 @@ def get_jamf_mobiles():
 def get_jamf_mobiles_by_group(jamf_id):
     api_url = '{0}/JSSResource/mobiledevicegroups/id/{1}'.format(jamfpro_base, jamf_id)
     logging.debug('Calling for JAMF mobiles against: {}\n The username, passwords, and headers for this GET requestcan be found near the beginning of the output.'.format(api_url))
-    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = requests.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         jsonresponse = response.json()
@@ -272,7 +270,7 @@ def get_jamf_mobiles_by_group(jamf_id):
 # Function to lookup a JAMF asset by id.
 def search_jamf_asset(jamf_id):
     api_url = "{}/JSSResource/computers/id/{}".format(jamfpro_base, jamf_id)
-    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = requests.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         jsonresponse = response.json()
@@ -293,7 +291,7 @@ def search_jamf_asset(jamf_id):
 # Function to lookup a JAMF mobile asset by id.
 def search_jamf_mobile(jamf_id):
     api_url = "{}/JSSResource/mobiledevices/id/{}".format(jamfpro_base, jamf_id)
-    response = requests.get(api_url, auth=(jamf_api_user, jamf_api_password), headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = requests.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         jsonresponse = response.json()
@@ -316,7 +314,7 @@ def update_jamf_asset_tag(jamf_id, asset_tag):
     api_url = "{}/JSSResource/computers/id/{}".format(jamfpro_base, jamf_id)
     payload = """<?xml version="1.0" encoding="UTF-8"?><computer><general><id>{}</id><asset_tag>{}</asset_tag></general></computer>""".format(jamf_id, asset_tag)
     logging.debug('Making Get request against: {}\nPayload for the PUT request is: {}\nThe username, password, and headers can be found near the beginning of the output.'.format(api_url, payload))
-    response = requests.put(api_url, auth=(jamf_api_user, jamf_api_password), data=payload, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = requests.put(api_url, data=payload, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 201:
         logging.debug("Got a 201 response. Returning: True")
         return True
@@ -339,7 +337,7 @@ def update_jamf_mobiledevice_asset_tag(jamf_id, asset_tag):
     api_url = "{}/JSSResource/mobiledevices/id/{}".format(jamfpro_base, jamf_id)
     payload = """<?xml version="1.0" encoding="UTF-8"?><mobile_device><general><id>{}</id><asset_tag>{}</asset_tag></general></mobile_device>""".format(jamf_id, asset_tag)
     logging.debug('Making Get request against: {}\nPayload for the PUT request is: {}\nThe username, password, and headers can be found near the beginning of the output.'.format(api_url, payload))
-    response = requests.put(api_url, auth=(jamf_api_user, jamf_api_password), data=payload, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = requests.put(api_url, data=payload, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 201:
         logging.debug("Got a 201 response. Returning: True")
         return True
@@ -492,7 +490,7 @@ def update_snipe_asset(snipe_id, payload):
     if response.status_code == 200:
         logging.debug("Got back status code: 200 - Checking the payload updated properly: If you error here it's because you configure the API mapping right.")
         jsonresponse = response.json()
-        # Check if there's an Error and Log it, or parse the payload. 
+        # Check if there's an Error and Log it, or parse the payload.
         if jsonresponse['status'] == "error":
             logging.error('Unable to update ID: {}. Error "{}"'.format(snipe_id, jsonresponse['messages']))
             goodupdate = False
@@ -749,7 +747,7 @@ for jamf_type in jamf_types:
                         newasset[snipekey] = jamf_value
                     except KeyError:
                         continue
-                # Reset the payload without the asset_tag if auto_incrementing flag is set. 
+                # Reset the payload without the asset_tag if auto_incrementing flag is set.
                 if user_args.auto_incrementing:
                     newasset.pop('asset_tag', None)
                 new_snipe_asset = create_snipe_asset(newasset)
@@ -828,7 +826,7 @@ for jamf_type in jamf_types:
 
                 if updates:
                     update_snipe_asset(snipe_id, updates)
-                
+
                 if ((user_args.users or user_args.users_inverse) and (snipe['rows'][0]['assigned_to'] == None) == user_args.users) or user_args.users_force:
 
                     if snipe['rows'][0]['status_label']['status_meta'] in ('deployable', 'deployed'):
@@ -845,7 +843,7 @@ for jamf_type in jamf_types:
                 logging.debug("Not updating the Snipe asset because Snipe has a more recent timestamp: {} < {}".format(jamf_time, snipe_time))
 
             # Update/Sync the Snipe Asset Tag Number back to JAMF
-            # The user arg below is set to false if it's called, so this would fail if the user called it. 
+            # The user arg below is set to false if it's called, so this would fail if the user called it.
             if (jamf['general']['asset_tag'] != snipe['rows'][0]['asset_tag']) and user_args.do_not_update_jamf :
                 logging.info("JAMF doesn't have the same asset tag as SNIPE so we'll update it because it should be authoritative.")
                 if snipe['rows'][0]['asset_tag'][0]:
