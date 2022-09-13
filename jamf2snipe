@@ -104,25 +104,45 @@ if 'snipe-it' not in set(config):
 
 logging.info("Great, we found a settings file. Let's get started by parsing all fo the settings.")
 
-# Set some Variables from the settings.conf:
-# This is the address, cname, or FQDN for your JamfPro instance.
-jamfpro_base = config['jamf']['url']
-logging.info("The configured JAMFPro base url is: {}".format(jamfpro_base))
-jamf_apiKey = config['jamf']['apikey']
-logging.debug("The API key you provided for Jamf is: {}".format(jamf_apiKey))
+# While setting the variables, use a try loop so we can raise a error if something goes wrong. 
+try:
+    # Set some Variables from the settings.conf:
+    # This is the address, cname, or FQDN for your JamfPro instance.
+    logging.info("Setting the Jamf Pro Base url.")
+    jamfpro_base = config['jamf']['url']
+    logging.debug("The configured Jamf Pro base url is: {}".format(jamfpro_base))
 
-# This is the address, cname, or FQDN for your snipe-it instance.
-snipe_base = config['snipe-it']['url']
-logging.info("The configured Snipe-IT base url is: {}".format(snipe_base))
-snipe_apiKey = config['snipe-it']['apikey']
-logging.debug("The API key you provided for Snipe is: {}".format(snipe_apiKey))
-defaultStatus = config['snipe-it']['defaultStatus']
-logging.info("The default status we'll be setting updated computer to is: {} (I sure hope this is a number or something is probably wrong)".format(defaultStatus))
-apple_manufacturer_id = config['snipe-it']['manufacturer_id']
-logging.info("The configured JAMFPro base url is: {} (Pretty sure this needs to be a number too)".format(apple_manufacturer_id))
+    logging.info("Setting the username to request an api key.")
+    jamf_user = config['jamf']['user']
+    logging.debug("The user you provided for Jamf is: {}".format(jamf_user))
+
+    logging.info("Setting the password to request an api key.")
+    jamf_user = config['jamf']['password']
+    logging.debug("The password you provided for Jamf is: {}".format(jamf_user))    
+    
+    # This is the address, cname, or FQDN for your snipe-it instance.
+    logging.info("Setting the base URL for SnipeIT.")
+    snipe_base = config['snipe-it']['url']
+    logging.debug("The configured Snipe-IT base url is: {}".format(snipe_base))
+    
+    logging.info("Setting the API key for SnipeIT.") 
+    snipe_apiKey = config['snipe-it']['apikey']
+    logging.debug("The API key you provided for Snipe is: {}".format(snipe_apiKey))
+    
+    logging.info("Setting the default status for SnipeIT assets.")
+    defaultStatus = config['snipe-it']['defaultStatus']
+    logging.debug("The default status we'll be setting updated assets to is: {} (I sure hope this is a number or something is probably wrong)".format(defaultStatus))
+    
+    logging.info("Setting the Snipe ID for Apple Manufacturer devices.")
+    apple_manufacturer_id = config['snipe-it']['manufacturer_id']
+    logging.debug("The configured manufacturer ID for Apple computers in snipe is: {} (Pretty sure this needs to be a number too)".format(apple_manufacturer_id))
+
+except:
+    logging.error("Some of the required settings from the settings.conf were missing or invalid. Re-run jamf2snipe with the --verbose or --debug flag to get more details on which setting is missing or misconfigured.")
+    raise SystemExit("Error: Missing or invalid settings in settings.conf - Exiting.")
+
 
 # Headers for the API call.
-
 logging.info("Creating the headers we'll need for API calls")
 jamfheaders = {'Authorization': 'Bearer {}'.format(jamf_apiKey),'Accept': 'application/json','Content-Type':'application/json'}
 snipeheaders = {'Authorization': 'Bearer {}'.format(snipe_apiKey),'Accept': 'application/json','Content-Type':'application/json'}
