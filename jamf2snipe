@@ -109,7 +109,7 @@ if 'snipe-it' not in set(config):
     logging.error("No valid settings.conf was found. We'll need to quit while you figure out where the settings are at. You can check the README for valid locations.")
     raise SystemExit("Error: No valid settings.conf - Exiting.")
 
-logging.info("Great, we found a settings file. Let's get started by parsing all fo the settings.")
+logging.info("Great, we found a settings file. Let's get started by parsing all of the settings.")
 
 # While setting the variables, use a try loop so we can raise a error if something goes wrong. 
 try:
