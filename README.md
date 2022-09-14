@@ -73,17 +73,17 @@ Lastly, if the asset_tag field is blank in JAMF when it is being created in Snip
 4. Install dependencies
   - `pip install -r /path/to/jamf2snipe/requirements.txt`
 
-5. Configure settings.conf
+5. Configure settings.conf (you can start by copying settings.conf.example to settings.conf)
 6. Run `python jamf2snipe` & profit
 
 ### Linux
 
 1. Copy the files to your system (recommend installing to /opt/jamf2snipe/* ). Make sure you meet all the system requirements.
-2. Edit the settings.conf to match your current environment. The script will look for a valid settings.conf in /opt/jamf2snipe/settings.conf, /etc/jamf2snipe/settings.conf, or in the current folder (in that order): so either copy the file to one of those locations, or be sure that the user running the program is in the same folder as the settings.conf.
+2. Edit the settings.conf to match your current environment - you can start by copying settings.conf.example to settings.conf. The script will look for a valid settings.conf in /opt/jamf2snipe/settings.conf, /etc/jamf2snipe/settings.conf, or in the current folder (in that order): so either copy the file to one of those locations, or be sure that the user running the program is in the same folder as the settings.conf.
 
 ## Configuration - settings.conf:
 
-All of the settings that are listed in the settings.conf are required except for the api-mapping section. It's recommended that you install these files to /opt/jamf2snipe/ and run them from there. You will need valid subsets from [JAMF's API](https://developer.jamf.com/apis/classic-api/index) to associate fields into Snipe.
+All of the settings that are listed in the [settings.conf.example](https://github.com/grokability/jamf2snipe/blob/main/settings.conf.example) are required except for the api-mapping section. It's recommended that you install these files to /opt/jamf2snipe/ and run them from there. You will need valid subsets from [JAMF's API](https://developer.jamf.com/apis/classic-api/index) to associate fields into Snipe.
 
 ### Required
 
@@ -97,10 +97,14 @@ Note: do not add `""` or `''` around any values.
 
 **[snipe-it]**
 
+Check out the [settings.conf.example](https://github.com/grokability/jamf2snipe/blob/main/settings.conf.example) file for the full documentation
+
 - `url`: http://*your_snipe_instance*.com
 - `apikey`: API key generated via [these steps](https://snipe-it.readme.io/reference#generating-api-tokens).
-- `manufacturer_id`: The manufacturer database field id for the Apple in your Snipe-IT instance.
-- `defaultStatus`: The status database field id to assign to any assets created in Snipe-IT from JAMF.
+- `manufacturer_id`: The manufacturer database field id for the Apple in your Snipe-IT instance. You will probably have to create a Manufacturer in Snipe-IT and note its ID.
+- `defaultStatus`: The status database field id to assign to any assets created in Snipe-IT from JAMF. Usually you will want to pick a status like "Ready To Deploy" - look up its ID in Snipe-IT and put the ID here.
+- `computer_model_category_id`: The ID of the category you want to assign to JAMF computers. You will have to create this in Snipe-IT and note the Category ID
+- `mobile_model_category_id`: The ID of the category you want to assign to JAMF mobile devices. You will have to create this in Snipe-IT and note the Category ID
 
 ### API Mapping
 
