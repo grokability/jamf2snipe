@@ -30,6 +30,8 @@
 #       _snipeit_custom_name_1234567890 = subset jamf_key
 #
 #   A list of valid subsets are:
+version = "1.0.0"
+
 validsubset = [
         "general",
         "location",
@@ -62,8 +64,9 @@ runtimeargs.add_argument("--dryrun", help="This checks your config and tries to 
 runtimeargs.add_argument("-d", "--debug", help="Sets logging to include additional DEBUG messages.", action="store_true")
 runtimeargs.add_argument("--do_not_update_jamf", help="Does not update Jamf with the asset tags stored in Snipe.", action="store_false")
 runtimeargs.add_argument('--do_not_verify_ssl', help="Skips SSL verification for all requests. Helpful when you use self-signed certificate.", action="store_false")
-runtimeargs.add_argument("-r", "--ratelimited", help="Puts a half second delay between Snipe IT API calls to adhere to the standard 120/minute rate limit", action="store_true")
+runtimeargs.add_argument("-r", "--ratelimited", help="Puts a half second delay between API calls to adhere to the standard 120/minute rate limit", action="store_true")
 runtimeargs.add_argument("-f", "--force", help="Updates the Snipe asset with information from Jamf every time, despite what the timestamps indicate.", action="store_true")
+runtimeargs.add_argument("--version", help="Prints the version and exits.", action="sture_true")
 user_opts = runtimeargs.add_mutually_exclusive_group()
 user_opts.add_argument("-u", "--users", help="Checks out the item to the current user in Jamf if it's not already deployed", action="store_true")
 user_opts.add_argument("-ui", "--users_inverse", help="Checks out the item to the current user in Jamf if it's already deployed", action="store_true")
@@ -73,6 +76,10 @@ type_opts = runtimeargs.add_mutually_exclusive_group()
 type_opts.add_argument("-m", "--mobiles", help="Runs against the Jamf mobiles endpoint only.", action="store_true")
 type_opts.add_argument("-c", "--computers", help="Runs against the Jamf computers endpoint only.", action="store_true")
 user_args = runtimeargs.parse_args()
+
+if user_args.version:
+    print(version)
+    raise SystemExit
 
 # Notify users they're going to get a wall of text in verbose mode.
 if user_args.verbose:
@@ -117,7 +124,7 @@ try:
     logging.debug("The user you provided for Jamf is: {}".format(jamf_user))
 
     logging.info("Setting the password to request an api key.")
-    jamf_user = config['jamf']['password']
+    jamf_password = config['jamf']['password']
     logging.debug("The password you provided for Jamf is: {}".format(jamf_user))    
     
     # This is the address, cname, or FQDN for your snipe-it instance.
@@ -140,13 +147,6 @@ try:
 except:
     logging.error("Some of the required settings from the settings.conf were missing or invalid. Re-run jamf2snipe with the --verbose or --debug flag to get more details on which setting is missing or misconfigured.")
     raise SystemExit("Error: Missing or invalid settings in settings.conf - Exiting.")
-
-
-# Headers for the API call.
-logging.info("Creating the headers we'll need for API calls")
-jamfheaders = {'Authorization': 'Bearer {}'.format(jamf_apiKey),'Accept': 'application/json','Content-Type':'application/json'}
-snipeheaders = {'Authorization': 'Bearer {}'.format(snipe_apiKey),'Accept': 'application/json','Content-Type':'application/json'}
-logging.debug('Request headers for JamfPro will be: {}\nRequest headers for Snipe will be: {}'.format(jamfheaders, snipeheaders))
 
 # Check the config file for correct headers
 
@@ -175,30 +175,84 @@ for key in config['computers-api-mapping']:
         raise SystemExit("Invalid Subset found in settings.conf")
 
 ### Setup Some Functions ###
-snipe_api_count = 0
-first_snipe_call = None
-# This function is run every time a request is made, handles rate limiting for Snipe IT.
+api_count = 0
+first_api_call = None
+
+# Headers for the API call.
+logging.info("Creating the headers we'll need for API calls")
+jamfbasicheaders = {'Accept': 'application/json','Content-Type':'application/json'}
+snipeheaders = {'Authorization': 'Bearer {}'.format(snipe_apiKey),'Accept': 'application/json','Content-Type':'application/json'}
+logging.debug('Request headers for JamfPro will be: {}\nRequest headers for Snipe will be: {}'.format(jamfbasicheaders, snipeheaders))
+
+# Use Basic Auth to request a Jamf Token. 
+def request_jamf_token():
+    # Tokens expire after 60 minutes, but we can't be sure that we're in the same TZ as the Jamf server, so we'll set up a timer.
+    global token_request_time
+    global jamf_apiKey
+    global jamfheaders
+    global expires_time
+    token_request_time = time.time()
+    logging.info("Requesting a new token at {}.".format(token_request_time))
+    api_url = '{0}/api/v1/auth/token'.format(jamfpro_base)
+    # No hook for this api call.
+    logging.debug('Calling for a token against: {}\n The username and password can be found earlier in the script.'.format(api_url))
+    # No hook for this API call.
+    response = requests.post(api_url, auth=(jamf_user, jamf_password), headers=jamfbasicheaders, verify=user_args.do_not_verify_ssl)
+    if response.status_code == 200:
+        logging.debug("Got back a valid 200 response code.")
+        jsonresponse = response.json()
+        logging.debug(jsonresponse)
+        # So we have our token and Expires time. Set the expires time globably so we can reset later. 
+        try:
+            expires_time = datetime.datetime.fromisoformat(jsonresponse['expires'].replace("Z", "+00:00"))
+        except:
+            # APIs are awful and Jamf doesn't always send enough ms digits. UGH. 
+            try:
+                expires_time = datetime.datetime.fromisoformat(jsonresponse['expires'].replace("Z", "0+00:00"))
+            except:
+                logging.error("Jamf sent a malformed timestamp: {}\n Please feel free to complain to Jamf support.".format(jsonresponse['expires']))
+                raise SystemExit("Unable to grok Jamf Timestamp - Exiting")
+        logging.debug("Token expires in: {}".format(expires_time - datetime.datetime.now(datetime.timezone.utc)))
+        # The headers are also global, because they get used elsewhere. 
+        logging.info("Setting new jamf headers with bearer token") 
+        jamfheaders = {'Authorization': 'Bearer {}'.format(jsonresponse['token']),'Accept': 'application/json','Content-Type':'application/json'}
+        logging.debug('Request headers for JamfPro will be: {}\nRequest headers for Snipe will be: {}'.format(jamfheaders, snipeheaders))
+    else:
+        logging.error("Could not obtain a token for use with Jamf's classic API. Please check your username and password.")
+        raise SystemExit("Unable to obtain Jamf Token")
+
+
+# This function is run every time a request is made, handles rate limiting for Snipe IT and keeps the token fresh for Jamf. 
 def request_handler(r, *args, **kwargs):
-    global snipe_api_count
-    global first_snipe_call
-    if (snipe_base in r.url) and user_args.ratelimited:
+    global api_count
+    global first_api_call
+    global token_request_time
+
+    # We need to check to see if we need to get a new token. 
+    timeleft = expires_time - datetime.datetime.now(datetime.timezone.utc)
+    # If there's less than 5 minutes (300 seconds) left on the token, get a new one.
+    if timeleft < datetime.timedelta(seconds=300):
+        request_jamf_token()
+    
+    # Slow and steady wins the race. Limit all API calls (not just to snipe) to the Rate limit. 
+    if user_args.ratelimited:
         if '"messages":429' in r.text:
             logging.warn("Despite respecting the rate limit of Snipe, we've still been limited. Trying again after sleeping for 2 seconds.")
             time.sleep(2)
             re_req = r.request
             s = requests.Session()
             return s.send(re_req)
-        if snipe_api_count == 0:
-            first_snipe_call = time.time()
+        if api_count == 0:
+            first_api_call = time.time()
             time.sleep(0.5)
-        snipe_api_count += 1
-        time_elapsed = (time.time() - first_snipe_call)
-        snipe_api_rate = snipe_api_count / time_elapsed
-        if snipe_api_rate > 1.95:
-            sleep_time = 0.5 + (snipe_api_rate - 1.95)
-            logging.debug('Going over snipe rate limit of 120/minute ({}/minute), sleeping for {}'.format(snipe_api_rate,sleep_time))
+        api_count += 1
+        time_elapsed = (time.time() - first_api_call)
+        api_rate = api_count / time_elapsed
+        if api_rate > 1.95:
+            sleep_time = 0.5 + (api_rate - 1.95)
+            logging.debug('Going over snipe rate limit of 120/minute ({}/minute), sleeping for {}'.format(api_rate,sleep_time))
             time.sleep(sleep_time)
-        logging.debug("Made {} requests to Snipe IT in {} seconds, with a request being sent every {} seconds".format(snipe_api_count, time_elapsed, snipe_api_rate))
+        logging.debug("Made {} requests to Snipe IT in {} seconds, with a request being sent every {} seconds".format(api_count, time_elapsed, api_rate))
     if '"messages":429' in r.text:
         logging.error(r.content)
         raise SystemExit("We've been rate limited. Use option -r to respect the built in Snipe IT API rate limit of 120/minute.")
@@ -610,8 +664,9 @@ else:
 if ( JAMF_UP == False ) or ( SNIPE_UP == False ):
     raise SystemExit("Error: Host could not be contacted.")
 
-# Test that we can actually connect with the API keys.
-##TODO Write some more tests here. ha!
+# Test that we can actually connect with the API keys by getting a bearer token. 
+request_jamf_token()
+
 
 logging.info("Finished running our tests.")
 
