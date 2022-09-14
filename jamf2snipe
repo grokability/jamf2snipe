@@ -638,15 +638,15 @@ def checkout_snipe_asset(user, asset_id, checked_out_user=None):
 # Report if we're verifying SSL or not.
 logging.info("SSL Verification is set to: {}".format(user_args.do_not_verify_ssl))
 
-# Do some tests to see if the hosts are up.
+# Do some tests to see if the hosts are up. Don't use hooks for these as we don't have tokens yet. 
 logging.info("Running tests to see if hosts are up.")
 try:
-    SNIPE_UP = True if requests.get(snipe_base, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}).status_code == 200 else False
+    SNIPE_UP = True if requests.get(snipe_base, verify=user_args.do_not_verify_ssl).status_code == 200 else False
 except Exception as e:
     logging.exception(e)
     SNIPE_UP = False
 try:
-    JAMF_UP = True if requests.get(jamfpro_base, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}).status_code in (200, 401) else False
+    JAMF_UP = True if requests.get(jamfpro_base, verify=user_args.do_not_verify_ssl).status_code in (200, 401) else False
 except Exception as e:
     logging.exception(e)
     JAMF_UP = False
