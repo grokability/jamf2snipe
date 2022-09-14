@@ -66,7 +66,7 @@ runtimeargs.add_argument("--do_not_update_jamf", help="Does not update Jamf with
 runtimeargs.add_argument('--do_not_verify_ssl', help="Skips SSL verification for all requests. Helpful when you use self-signed certificate.", action="store_false")
 runtimeargs.add_argument("-r", "--ratelimited", help="Puts a half second delay between API calls to adhere to the standard 120/minute rate limit", action="store_true")
 runtimeargs.add_argument("-f", "--force", help="Updates the Snipe asset with information from Jamf every time, despite what the timestamps indicate.", action="store_true")
-runtimeargs.add_argument("--version", help="Prints the version and exits.", action="sture_true")
+runtimeargs.add_argument("--version", help="Prints the version and exits.", action="store_true")
 user_opts = runtimeargs.add_mutually_exclusive_group()
 user_opts.add_argument("-u", "--users", help="Checks out the item to the current user in Jamf if it's not already deployed", action="store_true")
 user_opts.add_argument("-ui", "--users_inverse", help="Checks out the item to the current user in Jamf if it's already deployed", action="store_true")
