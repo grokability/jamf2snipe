@@ -1,7 +1,7 @@
 [jamf]
 # This entire section is Required
 url = https://yourinstance.jamfcloud.com
-user = yourJamfUsername
+username = yourJamfUsername
 password = $ecretJ@mfPassw0rd
 
 [snipe-it]

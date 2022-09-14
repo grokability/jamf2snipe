@@ -30,7 +30,7 @@
 #       _snipeit_custom_name_1234567890 = subset jamf_key
 #
 #   A list of valid subsets are:
-version = "1.0.0"
+version = "1.0.1"
 
 validsubset = [
         "general",
@@ -120,7 +120,7 @@ try:
     logging.debug("The configured Jamf Pro base url is: {}".format(jamfpro_base))
 
     logging.info("Setting the username to request an api key.")
-    jamf_user = config['jamf']['user']
+    jamf_user = config['jamf']['username']
     logging.debug("The user you provided for Jamf is: {}".format(jamf_user))
 
     logging.info("Setting the password to request an api key.")
