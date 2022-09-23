@@ -794,6 +794,11 @@ for jamf_type in jamf_types:
                             jamf_asset_tag = 'jamfid-m-{}'.format(jamf['general']['id'])
                         elif jamf_type == 'computers':
                             jamf_asset_tag = 'jamfid-{}'.format(jamf['general']['id'])
+                        else:
+                            logging.error("Could not generate an asset tag for this device. Skipping")
+                            # Dump the object for debugging. 
+                            logging.verbose(jamf)
+                            continue
                         #raise SystemError('No such attribute {} in the jamf payload. Please check your settings.conf file'.format(tag_split))
                 if jamf_asset_tag == None or jamf_asset_tag == '':
                     logging.debug('No custom configuration found in settings.conf for asset tag name upon asset creation.')
