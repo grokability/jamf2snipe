@@ -370,7 +370,7 @@ def search_jamf_mobile(jamf_id):
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         jsonresponse = response.json()
-        logging.debug("Returning: {}".format(jsonresponse['mobile_device']))
+        #logging.debug("Returning: {}".format(jsonresponse['mobile_device']))
         return jsonresponse['mobile_device']
     elif b'policies.ratelimit.QuotaViolation' in response.content:
         logging.info('JAMFPro responded with error code: {} - Policy Ratelimit Quota Violation - when we tried to look up id: {} Waiting a bit to retry the lookup.'.format(response, jamf_id))
@@ -813,9 +813,12 @@ for jamf_type in jamf_types:
             if jamf_type == 'mobile_devices':
                 logging.debug("Payload is being made for a mobile device")
                 newasset = {'asset_tag': jamf_asset_tag, 'model_id': modelnumbers['{}'.format(jamf['general']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}
+                logging.debug(newasset)
+                new_snipe_asset = create_snipe_asset(newasset)
             elif jamf_type == 'computers':
                 logging.debug("Payload is being made for a computer")
                 newasset = {'asset_tag': jamf_asset_tag,'model_id': modelnumbers['{}'.format(jamf['hardware']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}
+                new_snipe_asset = create_snipe_asset(newasset)
             else:
                 for snipekey in config['{}-api-mapping'.format(jamf_type)]:
                     jamfsplit = config['{}-api-mapping'.format(jamf_type)][snipekey].split()
@@ -838,12 +841,13 @@ for jamf_type in jamf_types:
                     except KeyError:
                         continue
                 # Reset the payload without the asset_tag if auto_incrementing flag is set.
-                if user_args.auto_incrementing:
-                    newasset.pop('asset_tag', None)
+            if user_args.auto_incrementing:
+                newasset.pop('asset_tag', None)
                 new_snipe_asset = create_snipe_asset(newasset)
+                logging.debug(new_snipe_asset)
                 if new_snipe_asset[0] != "AssetCreated":
                     continue
-                if user_args.users or user_args.users_force or user_args.users_inverse:
+            if user_args.users or user_args.users_force or user_args.users_inverse:
                     jamfsplit = config['user-mapping']['jamf_api_field'].split()
                     if jamfsplit[1] not in jamf[jamfsplit[0]]:
                         logging.info("Couldn't find {} for this device in {}, not checking it out.".format(jamfsplit[1], jamfsplit[0]))
