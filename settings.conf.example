@@ -1,6 +1,8 @@
 [jamf]
+# This entire section is Required
 url = https://yourinstance.jamfcloud.com
-apikey = YOUR-API-KEY-HERE
+username = yourJamfUsername
+password = $ecretJ@mfPassw0rd
 
 [snipe-it]
 #Required

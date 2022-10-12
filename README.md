@@ -1,36 +1,39 @@
 # jamf2snipe
 ## Import/Sync Computers from JAMF to Snipe-IT
 ```
-usage: jamf2snipe [-h] [-v] [--dryrun] [-d] [--do_not_verify_ssl] [-r]
-                  [--no_search] [-u | -ui | -uf] [-m | -c]
+usage: jamf2snipe [-h] [-v] [--auto_incrementing] [--dryrun] [-d] [--do_not_update_jamf] [--do_not_verify_ssl] [-r] [-f] [--version] [-u | -ui | -uf] [-uns] [-m | -c]
 
-optional arguments:
--h, --help            show this help message and exit
--v, --verbose         Sets the logging level to INFO and gives you a better
-                      idea of what the script is doing.
---dryrun              This checks your config and tries to contact both the
-                      JAMFPro and Snipe-it instances, but exits before
-                      updating or syncing any assets.
--d, --debug           Sets logging to include additional DEBUG messages.
---do_not_update_jamf  Does not update Jamf with the asset tags stored in
-                      Snipe.
---do_not_verify_ssl   Skips SSL verification for all requests. Helpful when
-                      you use self-signed certificate.
--r, --ratelimited     Puts a half second delay between Snipe IT API calls to
-                      adhere to the standard 120/minute rate limit
--f, --force           Updates the Snipe asset with information from Jamf
-                      every time, despite what the timestamps indicate.
--u, --users           Checks out the item to the current user in Jamf if
-                      it's not already deployed
--ui, --users_inverse  Checks out the item to the current user in Jamf if
-                      it's already deployed
--uf, --users_force    Checks out the item to the user specified in Jamf no
-                      matter what
--uns, --users_no_search
-                      Doesn't search for any users if the specified fields
-                      in Jamf and Snipe don't match. (case insensitive)
--m, --mobiles         Runs against the Jamf mobiles endpoint only.
--c, --computers       Runs against the Jamf computers endpoint only.
+options:
+  -h, --help            show this help message and exit
+  -v, --verbose         Sets the logging level to INFO and gives you a better
+                        idea of what the script is doing.
+  --auto_incrementing   You can use this if you have auto-incrementing 
+                        enabled in your snipe instance to utilize that 
+                        instead of adding the Jamf ID for the asset tag.
+  --dryrun              This checks your config and tries to contact both 
+                        the JAMFPro and Snipe-it instances, but exits before 
+                        updating or syncing any assets.
+  -d, --debug           Sets logging to include additional DEBUG messages.
+  --do_not_update_jamf  Does not update Jamf with the asset tags stored in 
+                        Snipe.
+  --do_not_verify_ssl   Skips SSL verification for all requests. Helpful when
+                        you use self-signed certificate.
+  -r, --ratelimited     Puts a half second delay between API calls to adhere 
+                        to the standard 120/minute rate limit
+  -f, --force           Updates the Snipe asset with information from Jamf 
+                        every time, despite what the timestamps indicate.
+  --version             Prints the version and exits.
+  -u, --users           Checks out the item to the current user in Jamf if 
+                        it's not already deployed
+  -ui, --users_inverse  Checks out the item to the current user in Jamf if 
+                        it's already deployed
+  -uf, --users_force    Checks out the item to the user specified in Jamf no 
+                        matter what
+  -uns, --users_no_search
+                        Doesn't search for any users if the specified fields 
+                        in Jamf and Snipe don't match. (case insensitive)
+  -m, --mobiles         Runs against the Jamf mobiles endpoint only.
+  -c, --computers       Runs against the Jamf computers endpoint only.
 ```
 
 ## Overview:
