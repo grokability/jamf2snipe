@@ -370,7 +370,7 @@ def search_jamf_mobile(jamf_id):
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         jsonresponse = response.json()
-        #logging.debug("Returning: {}".format(jsonresponse['mobile_device']))
+        logging.debug("Returning: {}".format(jsonresponse['mobile_device']))
         return jsonresponse['mobile_device']
     elif b'policies.ratelimit.QuotaViolation' in response.content:
         logging.info('JAMFPro responded with error code: {} - Policy Ratelimit Quota Violation - when we tried to look up id: {} Waiting a bit to retry the lookup.'.format(response, jamf_id))
