@@ -30,7 +30,7 @@
 #       _snipeit_custom_name_1234567890 = subset jamf_key
 #
 #   A list of valid subsets are:
-version = "1.0.1"
+version = "1.0.2"
 
 validsubset = [
         "general",
@@ -813,12 +813,9 @@ for jamf_type in jamf_types:
             if jamf_type == 'mobile_devices':
                 logging.debug("Payload is being made for a mobile device")
                 newasset = {'asset_tag': jamf_asset_tag, 'model_id': modelnumbers['{}'.format(jamf['general']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}
-                logging.debug(newasset)
-                new_snipe_asset = create_snipe_asset(newasset)
             elif jamf_type == 'computers':
                 logging.debug("Payload is being made for a computer")
                 newasset = {'asset_tag': jamf_asset_tag,'model_id': modelnumbers['{}'.format(jamf['hardware']['model_identifier'])], 'name': jamf['general']['name'], 'status_id': defaultStatus,'serial': jamf['general']['serial_number']}
-                new_snipe_asset = create_snipe_asset(newasset)
             else:
                 for snipekey in config['{}-api-mapping'.format(jamf_type)]:
                     jamfsplit = config['{}-api-mapping'.format(jamf_type)][snipekey].split()
@@ -840,21 +837,14 @@ for jamf_type in jamf_types:
                         newasset[snipekey] = jamf_value
                     except KeyError:
                         continue
-                # Reset the payload without the asset_tag if auto_incrementing flag is set.
+            # Reset the payload without the asset_tag if auto_incrementing flag is set.
             if user_args.auto_incrementing:
                 newasset.pop('asset_tag', None)
-                new_snipe_asset = create_snipe_asset(newasset)
-                logging.debug(new_snipe_asset)
-                if new_snipe_asset[0] != "AssetCreated":
-                    continue
+            new_snipe_asset = create_snipe_asset(newasset)
+            logging.debug(new_snipe_asset)
+            if new_snipe_asset[0] != "AssetCreated":
+                continue
             if user_args.users or user_args.users_force or user_args.users_inverse:
-                    jamfsplit = config['user-mapping']['jamf_api_field'].split()
-                    if jamfsplit[1] not in jamf[jamfsplit[0]]:
-                        logging.info("Couldn't find {} for this device in {}, not checking it out.".format(jamfsplit[1], jamfsplit[0]))
-                        continue
-                    logging.info('Checking out new item {} to user {}'.format(jamf['general']['name'], jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])]))
-                    checkout_snipe_asset(jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])],new_snipe_asset[1].json()['payload']['id'], "NewAsset")
-
         # Log an error if there's an issue, or more than once match.
         elif snipe == 'MultiMatch':
             logging.warning("WARN: You need to resolve multiple assets with the same serial number in your inventory. If you can't find them in your inventory, you might need to purge your deleted records. You can find that in the Snipe Admin settings. Skipping serial number {} for now.".format(jamf['general']['serial_number']))
