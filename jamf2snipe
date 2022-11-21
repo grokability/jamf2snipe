@@ -30,7 +30,7 @@
 #       _snipeit_custom_name_1234567890 = subset jamf_key
 #
 #   A list of valid subsets are:
-version = "1.0.2"
+version = "1.0.3"
 
 validsubset = [
         "general",
@@ -159,6 +159,13 @@ if not 'user-mapping' in config and (user_args.users or user_args.users_force or
     logging.error("""You've chosen to check out assets to users in some capacity using a cmdline switch, but not specified how you want to
     search Snipe IT for the users from Jamf. Make sure you have a 'user-mapping' section in your settings.conf file.""")
     SETTINGS_CORRECT = False
+if snipe_base.endswith("/"):
+    logging.error("""You have a trailing forward slash in the snipe url. Please remove it.""")
+    SETTINGS_CORRECT = False
+if jamfpro_base.endswith("/"):
+    logging.error("""You have a trailing forward slash in the JamfPro url. Please remove it.""")
+    SETTINGS_CORRECT = False
+
 
 if not SETTINGS_CORRECT:
     raise SystemExit
@@ -845,6 +852,12 @@ for jamf_type in jamf_types:
             if new_snipe_asset[0] != "AssetCreated":
                 continue
             if user_args.users or user_args.users_force or user_args.users_inverse:
+                jamfsplit = config['user-mapping']['jamf_api_field'].split()
+                if jamfsplit[1] not in jamf[jamfsplit[0]]:
+                    logging.info("Couldn't find {} for this device in {}, not checking it out.".format(jamfsplit[1], jamfsplit[0]))
+                    continue
+                logging.info('Checking out new item {} to user {}'.format(jamf['general']['name'], jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])]))
+                checkout_snipe_asset(jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])],new_snipe_asset[1].json()['payload']['id'], "NewAsset")
         # Log an error if there's an issue, or more than once match.
         elif snipe == 'MultiMatch':
             logging.warning("WARN: You need to resolve multiple assets with the same serial number in your inventory. If you can't find them in your inventory, you might need to purge your deleted records. You can find that in the Snipe Admin settings. Skipping serial number {} for now.".format(jamf['general']['serial_number']))
