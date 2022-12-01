@@ -444,14 +444,18 @@ def search_snipe_asset(serial):
     if response.status_code == 200:
         jsonresponse = response.json()
         # Check to make sure there's actually a result
-        if jsonresponse['total'] == 1:
-            return jsonresponse
-        elif jsonresponse['total'] == 0:
+        if "total" in jsonresponse:
+            if jsonresponse['total'] == 1:
+                return jsonresponse
+            elif jsonresponse['total'] == 0:
+                logging.info("No assets match {}".format(serial))
+                return "NoMatch"
+            else:
+                logging.warning('FOUND {} matching assets while searching for: {}'.format(jsonresponse['total'], serial))
+                return "MultiMatch"
+        else:
             logging.info("No assets match {}".format(serial))
             return "NoMatch"
-        else:
-            logging.warning('FOUND {} matching assets while searching for: {}'.format(jsonresponse['total'], serial))
-            return "MultiMatch"
     else:
         logging.warning('Snipe-IT responded with error code:{} when we tried to look up: {}'.format(response.text, serial))
         logging.debug('{} - {}'.format(response.status_code, response.content))
