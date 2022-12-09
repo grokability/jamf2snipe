@@ -17,9 +17,12 @@ mobile_model_category_id = 3
 #mobile_custom_fieldset_id = 4
 #asset_tag = general serial_number # If not specified, defaults to jamf-{id} or jamf-m-{id}
 
+# EDIT THESE FIELDS SO THEY CORRESPOND WITH THE CUSTOM FIELD DB COLUMN NAMES IN YOUR SNIPE-IT INSTANCE
 [computers-api-mapping]
 name = general name
 _snipeit_mac_address_1 = general mac_address
+_snipeit_ram_2 = hardware total_ram_mb / 1024
+_snipeit_hdd_3 = hardware storage drive_capacity_mb / 1024
 
 
 [mobile_devices-api-mapping]
