@@ -21,8 +21,8 @@ mobile_model_category_id = 3
 [computers-api-mapping]
 name = general name
 _snipeit_mac_address_1 = general mac_address
-_snipeit_ram_2 = hardware total_ram_mb / 1024
-_snipeit_hdd_3 = hardware storage drive_capacity_mb / 1024
+_snipeit_ram_2 = hardware total_ram_mb
+_snipeit_hdd_3 = hardware storage drive_capacity_mb
 
 
 [mobile_devices-api-mapping]
