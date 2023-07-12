@@ -47,7 +47,7 @@ Lastly, if the asset_tag field is blank in JAMF when it is being created in Snip
 
 ## Requirements:
 
-- Python3 is installed on your system with the requests, json, time, and configparser python libs installed.
+- Python3 (3.7 or higher) is installed on your system with the requests, json, time, and configparser python libs installed.
 - Network access to both your JAMF and Snipe-IT environments.
 - A JAMF username and password that has read & write permissions for computer assets, mobile device assets, and users.
   - Computers: Read, Update
@@ -59,10 +59,10 @@ Lastly, if the asset_tag field is blank in JAMF when it is being created in Snip
 
 ### Mac
 
-1. Install Python 3.6 or later
+1. Install Python 3.7 or later
   - Grab the latest PKG installer from the Python website and run it.
 
-2. Add Python 3.6 or later to your PATH
+2. Add Python 3.7 or later to your PATH
   - Run the `Update Shell Profile.command` script in the `/Applications/Python 3.X` folder to add `python3.X` your PATH
 
 3. Create a virtualenv for jamf2snipe
