@@ -30,7 +30,7 @@
 #       _snipeit_custom_name_1234567890 = subset jamf_key
 #
 #   A list of valid subsets are:
-version = "1.0.4"
+version = "1.0.5"
 
 validsubset = [
         "general",
@@ -197,6 +197,7 @@ def request_jamf_token():
     global token_request_time
     global jamf_apiKey
     global jamfheaders
+    global jamfxmlheaders
     global expires_time
     token_request_time = time.time()
     logging.info("Requesting a new token at {}.".format(token_request_time))
@@ -223,6 +224,7 @@ def request_jamf_token():
         # The headers are also global, because they get used elsewhere. 
         logging.info("Setting new jamf headers with bearer token") 
         jamfheaders = {'Authorization': 'Bearer {}'.format(jsonresponse['token']),'Accept': 'application/json','Content-Type':'application/json'}
+        jamfxmlheaders = {'Authorization': 'Bearer {}'.format(jsonresponse['token']),'Accept': 'application/xml','Content-Type':'application/xml'}
         logging.debug('Request headers for JamfPro will be: {}\nRequest headers for Snipe will be: {}'.format(jamfheaders, snipeheaders))
     else:
         logging.error("Could not obtain a token for use with Jamf's classic API. Please check your username and password.")
@@ -396,7 +398,7 @@ def update_jamf_asset_tag(jamf_id, asset_tag):
     api_url = "{}/JSSResource/computers/id/{}".format(jamfpro_base, jamf_id)
     payload = """<?xml version="1.0" encoding="UTF-8"?><computer><general><id>{}</id><asset_tag>{}</asset_tag></general></computer>""".format(jamf_id, asset_tag)
     logging.debug('Making Get request against: {}\nPayload for the PUT request is: {}\nThe username, password, and headers can be found near the beginning of the output.'.format(api_url, payload))
-    response = requests.put(api_url, data=payload, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = requests.put(api_url, data=payload, headers=jamfxmlheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 201:
         logging.debug("Got a 201 response. Returning: True")
         return True
@@ -419,7 +421,7 @@ def update_jamf_mobiledevice_asset_tag(jamf_id, asset_tag):
     api_url = "{}/JSSResource/mobiledevices/id/{}".format(jamfpro_base, jamf_id)
     payload = """<?xml version="1.0" encoding="UTF-8"?><mobile_device><general><id>{}</id><asset_tag>{}</asset_tag></general></mobile_device>""".format(jamf_id, asset_tag)
     logging.debug('Making Get request against: {}\nPayload for the PUT request is: {}\nThe username, password, and headers can be found near the beginning of the output.'.format(api_url, payload))
-    response = requests.put(api_url, data=payload, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = requests.put(api_url, data=payload, headers=jamfxmlheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 201:
         logging.debug("Got a 201 response. Returning: True")
         return True
