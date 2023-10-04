@@ -903,7 +903,7 @@ for jamf_type in jamf_types:
                                     jamf_value = jamf_value[item]
                         payload = {snipekey: jamf_value}
                         latestvalue = jamf_value
-                    except KeyError:
+                    except (KeyError, TypeError):
                         logging.debug("Skipping the payload, because the JAMF key we're mapping to doesn't exist")
                         continue
 
