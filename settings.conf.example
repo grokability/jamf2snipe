@@ -1,8 +1,11 @@
 [jamf]
-# This entire section is Required
-url = https://yourinstance.jamfcloud.com
+#REQUIRED: Either/or or both for this section
+url  https://yourinstance.jamfcloud.com
 username = yourJamfUsername
 password = $ecretJ@mfPassw0rd
+# New Jamf ClientID Api keys
+client_id = yourClientID
+client_secret = yourClientSecret
 
 [snipe-it]
 #Required
