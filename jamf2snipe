@@ -141,28 +141,25 @@ try:
     logging.debug(
         "The configured Jamf Pro base url is: {}".format(jamfpro_base))
 
-    if not user_args.auth_with_clientID:
-        logging.info("Setting the username to request an api key.")
-        jamf_user = config['jamf']['username']
-        logging.debug(
-            "The user you provided for Jamf is: {}".format(jamf_user))
-
     if user_args.auth_with_clientID:
         logging.info("Setting the client_id to request an api key.")
         jamf_client_id = config['jamf']['client_id']
         logging.debug(
             "The client_id you provided for Jamf is: {}".format(jamf_client_id))
-    if not user_args.auth_with_clientID:
-        logging.info("Setting the password to request an api key.")
-        jamf_password = config['jamf']['password']
-        logging.debug(
-            "The password you provided for Jamf is: {}".format(jamf_user))
 
-    if user_args.auth_with_clientID:
         logging.info("Setting the client_secret to request an api key.")
         jamf_client_secret = config['jamf']['client_secret']
         logging.debug(
             "The client_id you provided for Jamf is: {}".format(jamf_client_secret))
+    else:
+        logging.info("Setting the password to request an api key.")
+        jamf_password = config['jamf']['password']
+        logging.debug(
+            "The password you provided for Jamf is: {}".format(jamf_user))
+        logging.info("Setting the username to request an api key.")
+        jamf_user = config['jamf']['username']
+        logging.debug(
+            "The user you provided for Jamf is: {}".format(jamf_user))
 
     # This is the address, cname, or FQDN for your snipe-it instance.
     logging.info("Setting the base URL for SnipeIT.")
