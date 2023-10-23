@@ -55,11 +55,13 @@ import configparser
 import argparse
 import logging
 import datetime
+import subprocess
 
 # Set us up for using runtime arguments by defining them.
 runtimeargs = argparse.ArgumentParser()
 runtimeargs.add_argument("-v", "--verbose", help="Sets the logging level to INFO and gives you a better idea of what the script is doing.", action="store_true")
 runtimeargs.add_argument("--auto_incrementing", help="You can use this if you have auto-incrementing enabled in your snipe instance to utilize that instead of adding the Jamf ID for the asset tag.", action="store_true")
+runtimeargs.add_argument("-CID", "--auth_with_clientID", help="You can use this if you if using the new Jamf API Services to generate your key.", action="store_true")
 runtimeargs.add_argument("--dryrun", help="This checks your config and tries to contact both the JAMFPro and Snipe-it instances, but exits before updating or syncing any assets.", action="store_true")
 runtimeargs.add_argument("-d", "--debug", help="Sets logging to include additional DEBUG messages.", action="store_true")
 runtimeargs.add_argument("--do_not_update_jamf", help="Does not update Jamf with the asset tags stored in Snipe.", action="store_false")
@@ -118,24 +120,36 @@ try:
     logging.info("Setting the Jamf Pro Base url.")
     jamfpro_base = config['jamf']['url']
     logging.debug("The configured Jamf Pro base url is: {}".format(jamfpro_base))
-
-    logging.info("Setting the username to request an api key.")
-    jamf_user = config['jamf']['username']
-    logging.debug("The user you provided for Jamf is: {}".format(jamf_user))
-
-    logging.info("Setting the password to request an api key.")
-    jamf_password = config['jamf']['password']
-    logging.debug("The password you provided for Jamf is: {}".format(jamf_user))    
     
+    if not user_args.auth_with_clientID:
+        logging.info("Setting the username to request an api key.")
+        jamf_user = config['jamf']['username']
+        logging.debug("The user you provided for Jamf is: {}".format(jamf_user))
+
+    if user_args.auth_with_clientID:
+        logging.info("Setting the client_id to request an api key.")
+        jamf_client_id = config['jamf']['client_id']
+        logging.debug("The client_id you provided for Jamf is: {}".format(jamf_client_id))
+    if not user_args.auth_with_clientID:
+        logging.info("Setting the password to request an api key.")
+        jamf_password = config['jamf']['password']
+        logging.debug("The password you provided for Jamf is: {}".format(jamf_user))    
+
+    if user_args.auth_with_clientID:
+        logging.info("Setting the client_secret to request an api key.")
+        jamf_client_secret = config['jamf']['client_secret']
+        logging.debug("The client_id you provided for Jamf is: {}".format(jamf_client_secret))
+        
     # This is the address, cname, or FQDN for your snipe-it instance.
     logging.info("Setting the base URL for SnipeIT.")
     snipe_base = config['snipe-it']['url']
     logging.debug("The configured Snipe-IT base url is: {}".format(snipe_base))
     
-    logging.info("Setting the API key for SnipeIT.") 
+    logging.info("Setting the API key for SnipeIT.")
     snipe_apiKey = config['snipe-it']['apikey']
     logging.debug("The API key you provided for Snipe is: {}".format(snipe_apiKey))
     
+
     logging.info("Setting the default status for SnipeIT assets.")
     defaultStatus = config['snipe-it']['defaultStatus']
     logging.debug("The default status we'll be setting updated assets to is: {} (I sure hope this is a number or something is probably wrong)".format(defaultStatus))
@@ -188,11 +202,13 @@ first_api_call = None
 # Headers for the API call.
 logging.info("Creating the headers we'll need for API calls")
 jamfbasicheaders = {'Accept': 'application/json','Content-Type':'application/json'}
+jamfclientheaders = {'Accept': 'application/json','Content-Type':'application/x-www-form-urlencoded'}
 snipeheaders = {'Authorization': 'Bearer {}'.format(snipe_apiKey),'Accept': 'application/json','Content-Type':'application/json'}
 logging.debug('Request headers for JamfPro will be: {}\nRequest headers for Snipe will be: {}'.format(jamfbasicheaders, snipeheaders))
 
 # Use Basic Auth to request a Jamf Token. 
 def request_jamf_token():
+    
     # Tokens expire after 60 minutes, but we can't be sure that we're in the same TZ as the Jamf server, so we'll set up a timer.
     global token_request_time
     global jamf_apiKey
@@ -201,18 +217,45 @@ def request_jamf_token():
     global expires_time
     token_request_time = time.time()
     logging.info("Requesting a new token at {}.".format(token_request_time))
-    api_url = '{0}/api/v1/auth/token'.format(jamfpro_base)
-    # No hook for this api call.
-    logging.debug('Calling for a token against: {}\n The username and password can be found earlier in the script.'.format(api_url))
+
+    if user_args.auth_with_clientID:
+        api_url = '{0}/api/oauth/token'.format(jamfpro_base)
+        logging.debug('Calling for a token against: {}\n the ID and Secret can be found earlier in the script.'.format(api_url))
+  
+    else:
+        api_url = '{0}/api/v1/auth/token'.format(jamfpro_base)
+        logging.debug('Calling for a token against: {}\n The username and password can be found earlier in the script.'.format(api_url))
+  
     # No hook for this API call.
-    response = requests.post(api_url, auth=(jamf_user, jamf_password), headers=jamfbasicheaders, verify=user_args.do_not_verify_ssl)
+
+# data = {"name":"Partner13", "email":"example@exmaple.com"}
+# payload = json.dumps(data)
+    if user_args.auth_with_clientID:
+        data = {'client_id':jamf_client_id , 'client_secret':jamf_client_secret, "grant_type":"client_credentials"}
+        payload = json.dumps(data)
+        print(payload)
+        print(data)
+        response = requests.post(api_url, data=data, verify=user_args.do_not_verify_ssl)
+    else:
+        response = requests.post(api_url, auth=(jamf_user, jamf_password), headers=jamfbasicheaders, verify=user_args.do_not_verify_ssl)
+
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         jsonresponse = response.json()
         logging.debug(jsonresponse)
         # So we have our token and Expires time. Set the expires time globably so we can reset later. 
         try:
-            expires_time = datetime.datetime.fromisoformat(jsonresponse['expires'].replace("Z", "+00:00"))
+            if not user_args.auth_with_clientID:
+                expires_time = datetime.datetime.fromisoformat(jsonresponse['expires'].replace("Z", "+00:00"))
+                json_token = jsonresponse['token']
+            else: 
+                current_time = datetime.datetime.now(datetime.timezone.utc)
+                expires_epoch = jsonresponse['expires_in']
+                json_token = jsonresponse['access_token']
+                expires_time= current_time+ datetime.timedelta(0,0,0,0,expires_epoch)
+                # print('Current time is ', current_time, 'and lenght is ', expires_epoch)
+                # expires_time=current_time+expires_epoch
+
         except:
             # APIs are awful and Jamf doesn't always send enough ms digits. UGH. 
             try:
@@ -223,12 +266,14 @@ def request_jamf_token():
         logging.debug("Token expires in: {}".format(expires_time - datetime.datetime.now(datetime.timezone.utc)))
         # The headers are also global, because they get used elsewhere. 
         logging.info("Setting new jamf headers with bearer token") 
-        jamfheaders = {'Authorization': 'Bearer {}'.format(jsonresponse['token']),'Accept': 'application/json','Content-Type':'application/json'}
-        jamfxmlheaders = {'Authorization': 'Bearer {}'.format(jsonresponse['token']),'Accept': 'application/xml','Content-Type':'application/xml'}
+        jamfheaders = {'Authorization': 'Bearer {}'.format(json_token),'Accept': 'application/json','Content-Type':'application/json'}
+        jamfxmlheaders = {'Authorization': 'Bearer {}'.format(json_token),'Accept': 'application/xml','Content-Type':'application/xml'}
         logging.debug('Request headers for JamfPro will be: {}\nRequest headers for Snipe will be: {}'.format(jamfheaders, snipeheaders))
     else:
-        logging.error("Could not obtain a token for use with Jamf's classic API. Please check your username and password.")
+        logging.error("Could not obtain a token for use with Jamf's API. Please check your username and password.")
         raise SystemExit("Unable to obtain Jamf Token")
+
+
 
 
 # This function is run every time a request is made, handles rate limiting for Snipe IT and keeps the token fresh for Jamf. 
