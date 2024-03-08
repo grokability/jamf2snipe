@@ -60,7 +60,8 @@ import datetime
 runtimeargs = argparse.ArgumentParser()
 runtimeargs.add_argument("-v", "--verbose", help="Sets the logging level to INFO and gives you a better idea of what the script is doing.", action="store_true")
 runtimeargs.add_argument("--auto_incrementing", help="You can use this if you have auto-incrementing enabled in your snipe instance to utilize that instead of adding the Jamf ID for the asset tag.", action="store_true")
-runtimeargs.add_argument("--dryrun", help="This checks your config and tries to contact both the JAMFPro and Snipe-it instances, but exits before updating or syncing any assets.", action="store_true")
+runtimeargs.add_argument("--dryrun", help="This checks your config and tries to contact both the JAMFPro and Snipe-it instances, and will generate the assets for debugging, but not update or sync anything but exits before updating or syncing any assets.", action="store_true")
+runtimeargs.add_argument("--connection_test", help="This checks your config and tries to contact both the JAMFPro and Snipe-it instances.", action="store_true")
 runtimeargs.add_argument("-d", "--debug", help="Sets logging to include additional DEBUG messages.", action="store_true")
 runtimeargs.add_argument("--do_not_update_jamf", help="Does not update Jamf with the asset tags stored in Snipe.", action="store_false")
 runtimeargs.add_argument('--do_not_verify_ssl', help="Skips SSL verification for all requests. Helpful when you use self-signed certificate.", action="store_false")
@@ -89,8 +90,20 @@ elif user_args.debug:
 else:
     logging.basicConfig(level=logging.WARNING)
 
+# Notify users if we're doing a connection test.
+if user_args.connection_test and user_args.dryrun:
+    logging.error("You can't use --connection_test and --dryrun at the same time. Please choose one or the other.")
+    raise SystemExit("Error: Invalid runtime arguments - Exiting.")
+if user_args.connection_test and user_args.force:
+    logging.error("You can't use --connection_test and --force at the same time. Please choose one or the other.")
+    raise SystemExit("Error: Invalid runtime arguments - Exiting.")
+if user_args.connection_test:
+    print("Connection test: Starting jamf2snipe with a connection test where we'll try to contact both the JAMFPro and Snipe-it instances.")
+
 # Notify users if we're doing a dry run.
-if user_args.dryrun:
+if user_args.dryrun and user_args.force:
+    print("Running a dry run with force enabled. This will generate assets for debugging, but not update or sync anything.")
+elif user_args.dryrun:
     print("Dryrun: Starting jamf2snipe with a dry run where no assets will be updated.")
 
 # Find a valid settings.conf file.
@@ -395,6 +408,9 @@ def search_jamf_mobile(jamf_id):
 
 # Function to update the asset tag of computers in JAMF with an number passed from Snipe.
 def update_jamf_asset_tag(jamf_id, asset_tag):
+    if user_args.dryrun:
+        logging.debug("Would have updated JAMF asset id: {} with asset tag: {}".format(jamf_id, asset_tag))
+        return True
     api_url = "{}/JSSResource/computers/id/{}".format(jamfpro_base, jamf_id)
     payload = """<?xml version="1.0" encoding="UTF-8"?><computer><general><id>{}</id><asset_tag>{}</asset_tag></general></computer>""".format(jamf_id, asset_tag)
     logging.debug('Making Get request against: {}\nPayload for the PUT request is: {}\nThe username, password, and headers can be found near the beginning of the output.'.format(api_url, payload))
@@ -418,6 +434,9 @@ def update_jamf_asset_tag(jamf_id, asset_tag):
 
 # Function to update the asset tag of mobile devices in JAMF with an number passed from Snipe.
 def update_jamf_mobiledevice_asset_tag(jamf_id, asset_tag):
+    if user_args.dryrun:
+        logging.debug("Would have updated JAMF asset id: {} with asset tag: {}".format(jamf_id, asset_tag))
+        return True
     api_url = "{}/JSSResource/mobiledevices/id/{}".format(jamfpro_base, jamf_id)
     payload = """<?xml version="1.0" encoding="UTF-8"?><mobile_device><general><id>{}</id><asset_tag>{}</asset_tag></general></mobile_device>""".format(jamf_id, asset_tag)
     logging.debug('Making Get request against: {}\nPayload for the PUT request is: {}\nThe username, password, and headers can be found near the beginning of the output.'.format(api_url, payload))
@@ -570,6 +589,9 @@ def create_snipe_asset(payload):
 
 # Function that updates a snipe asset with a JSON payload
 def update_snipe_asset(snipe_id, payload):
+    if user_args.dryrun:
+        logging.debug("Dry run mode is enabled. We would have updated ID: {} with the following payload: {}".format(snipe_id, payload))
+        return True
     api_url = '{}/api/v1/hardware/{}'.format(snipe_base, snipe_id)
     logging.debug('The payload for the snipe update is: {}'.format(payload))
     response = requests.patch(api_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
@@ -737,8 +759,8 @@ else:
     raise SystemExit("Unable to get JAMF Computers.")
 
 # After this point we start editing data, so quit if this is a dryrun
-if user_args.dryrun:
-    raise SystemExit("Dryrun: Complete.")
+if user_args.connection_test:
+    raise SystemExit("Connection Test: Complete.")
 
 # From this point on, we're editing data.
 logging.info('Starting to Update Inventory')
