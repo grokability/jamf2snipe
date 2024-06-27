@@ -780,7 +780,7 @@ for jamf_type in jamf_types:
 
         # Check that the model number exists in snipe, if not create it.
         if jamf_type == 'computers':
-            if jamf['hardware']['model_identifier'] not in modelnumbers:
+            if jamf['hardware']['model_identifier'] not in modelnumbers and jamf['hardware']['model_identifier']:
                 logging.info("Could not find a model ID in snipe for: {}".format(jamf['hardware']['model_identifier']))
                 newmodel = {"category_id":config['snipe-it']['computer_model_category_id'],"manufacturer_id":apple_manufacturer_id,"name": jamf['hardware']['model'],"model_number":jamf['hardware']['model_identifier']}
                 if 'computer_custom_fieldset_id' in config['snipe-it']:
@@ -788,7 +788,7 @@ for jamf_type in jamf_types:
                     newmodel['fieldset_id'] = fieldset_split
                 create_snipe_model(newmodel)
         elif jamf_type == 'mobile_devices':
-            if jamf['general']['model_identifier'] not in modelnumbers:
+            if jamf['general']['model_identifier'] not in modelnumbers and jamf['general']['model_identifier']:
                 logging.info("Could not find a model ID in snipe for: {}".format(jamf['general']['model_identifier']))
                 newmodel = {"category_id":config['snipe-it']['mobile_model_category_id'],"manufacturer_id":apple_manufacturer_id,"name": jamf['general']['model'],"model_number":jamf['general']['model_identifier']}
                 if 'mobile_custom_fieldset_id' in config['snipe-it']:
