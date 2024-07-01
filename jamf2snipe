@@ -30,7 +30,7 @@
 #       _snipeit_custom_name_1234567890 = subset jamf_key
 #
 #   A list of valid subsets are:
-version = "1.0.5"
+version = "1.0.6"
 
 validsubset = [
         "general",
@@ -84,10 +84,10 @@ if user_args.version:
     raise SystemExit
 
 # Notify users they're going to get a wall of text in verbose mode.
-if user_args.verbose:
-    logging.basicConfig(level=logging.INFO)
-elif user_args.debug:
+if user_args.debug:
     logging.basicConfig(level=logging.DEBUG)
+elif user_args.verbose:
+    logging.basicConfig(level=logging.INFO)
 else:
     logging.basicConfig(level=logging.WARNING)
 
