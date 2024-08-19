@@ -54,6 +54,7 @@ import configparser
 import argparse
 import logging
 import datetime
+from base64 import b64encode
 from requests import Session
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
@@ -68,6 +69,7 @@ runtimeargs.add_argument("--do_not_update_jamf", help="Does not update Jamf with
 runtimeargs.add_argument('--do_not_verify_ssl', help="Skips SSL verification for all requests. Helpful when you use self-signed certificate.", action="store_false")
 runtimeargs.add_argument("-r", "--ratelimited", help="Puts a half second delay between API calls to adhere to the standard 120/minute rate limit", action="store_true")
 runtimeargs.add_argument("-f", "--force", help="Updates the Snipe asset with information from Jamf every time, despite what the timestamps indicate.", action="store_true")
+runtimeargs.add_argument("-i", "--add_images", help="Attempts to add an image from appledb.dev to any newly created models", action="store_true")
 runtimeargs.add_argument("--version", help="Prints the version and exits.", action="store_true")
 user_opts = runtimeargs.add_mutually_exclusive_group()
 user_opts.add_argument("-u", "--users", help="Checks out the item to the current user in Jamf if it's not already deployed", action="store_true")
@@ -549,6 +551,10 @@ def get_snipe_user_id(username):
 # Function that creates a new Snipe Model - not an asset - with a JSON payload
 def create_snipe_model(payload):
     api_url = '{}/api/v1/models'.format(snipe_base)
+    if user_args.add_images:
+        response = session.get('https://img.appledb.dev/device@1024/{}/0.png'.format(payload["model_number"]))
+        payload["image"] = "data:" + response.headers['Content-Type'] + ";" + "base64," + b64encode(response.content).decode("utf-8")
+
     logging.debug('Calling to create new snipe model type against: {}\nThe payload for the POST request is:{}\nThe request headers can be found near the start of the output.'.format(api_url, payload))
     response = session.post(api_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     if response.status_code == 200:
