@@ -22,6 +22,8 @@ options:
                         to the standard 120/minute rate limit
   -f, --force           Updates the Snipe asset with information from Jamf 
                         every time, despite what the timestamps indicate.
+  -i, --add_images      Attempts to add an image from appledb.dev to any
+                        newly created models
   --version             Prints the version and exits.
   -u, --users           Checks out the item to the current user in Jamf if 
                         it's not already deployed
