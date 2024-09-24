@@ -30,7 +30,7 @@
 #       _snipeit_custom_name_1234567890 = subset jamf_key
 #
 #   A list of valid subsets are:
-version = "1.0.6"
+version = "1.0.7"
 
 validsubset = [
         "general",
@@ -507,7 +507,7 @@ def get_snipe_users(previous=[]):
         'offset': len(previous)
     }
     logging.debug('The payload for the snipe users GET is {}'.format(payload))
-    response = session.get(user_id_url, headers=snipeheaders, params=payload, hooks={'response': request_handler})
+    response = session.get(user_id_url, headers=snipeheaders, params=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
     response_json = response.json()
     current = response_json['rows']
     if len(previous) != 0:
