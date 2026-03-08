@@ -32,6 +32,8 @@
 #   A list of valid subsets are:
 version = "1.0.7"
 
+DEFAULT_TIMEOUT = 30
+
 validsubset = [
         "general",
         "location",
@@ -55,6 +57,7 @@ import argparse
 import logging
 import datetime
 from base64 import b64encode
+from xml.sax.saxutils import escape as xml_escape
 from requests import Session
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
@@ -151,7 +154,7 @@ try:
 
     logging.info("Setting the API key for SnipeIT.")
     snipe_apiKey = config['snipe-it']['apikey']
-    logging.debug("The API key you provided for Snipe is: {}".format(snipe_apiKey))
+    logging.debug("Snipe API key is set (not logging for security).")
 
     logging.info("Setting the default status for SnipeIT assets.")
     defaultStatus = config['snipe-it']['defaultStatus']
@@ -161,8 +164,8 @@ try:
     apple_manufacturer_id = config['snipe-it']['manufacturer_id']
     logging.debug("The configured manufacturer ID for Apple computers in snipe is: {} (Pretty sure this needs to be a number too)".format(apple_manufacturer_id))
 
-except:
-    logging.error("Some of the required settings from the settings.conf were missing or invalid. Re-run jamf2snipe with the --verbose or --debug flag to get more details on which setting is missing or misconfigured.")
+except (KeyError, configparser.Error) as e:
+    logging.error("Some of the required settings from the settings.conf were missing or invalid: %s. Re-run jamf2snipe with the --verbose or --debug flag to get more details on which setting is missing or misconfigured.", e)
     raise SystemExit("Error: Missing or invalid settings in settings.conf - Exiting.")
 
 # Check the config file for correct headers
@@ -235,7 +238,7 @@ def request_jamf_token():
         "grant_type": "client_credentials"
     }
     logging.debug('The data being sent to JamfPro for token request is: {}'.format(data))
-    response = session.post(api_url, data=data, verify=user_args.do_not_verify_ssl)
+    response = session.post(api_url, data=data, verify=user_args.do_not_verify_ssl, timeout=DEFAULT_TIMEOUT)
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         jsonresponse = response.json()
@@ -244,8 +247,8 @@ def request_jamf_token():
         try:
             expires_in = int(jsonresponse['expires_in'])
             expires_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=expires_in)
-        except:
-            logging.error("Jamf sent a malformed timestamp: {}\n Please feel free to complain to Jamf support.".format(jsonresponse['expires_in']))
+        except (KeyError, ValueError, TypeError):
+            logging.error("Jamf sent a malformed timestamp: {}\n Please feel free to complain to Jamf support.".format(jsonresponse.get('expires_in')))
             raise SystemExit("Unable to grok Jamf Timestamp - Exiting")
         logging.debug("Token expires in: {}".format(expires_in))
         # The headers are also global, because they get used elsewhere.
@@ -298,7 +301,7 @@ def request_handler(r, *args, **kwargs):
 def get_jamf_computers():
     api_url = '{0}/JSSResource/computers'.format(jamfpro_base)
     logging.debug('Calling for JAMF computers against: {}\n The username, passwords, and headers for this GET requestcan be found near the beginning of the output.'.format(api_url))
-    response = session.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         return response.json()
@@ -318,7 +321,7 @@ def get_jamf_computers():
 def get_jamf_computers_by_group(jamf_id):
     api_url = '{0}/JSSResource/computergroups/id/{1}'.format(jamfpro_base, jamf_id)
     logging.debug('Calling for JAMF computers against: {}\n The username, passwords, and headers for this GET requestcan be found near the beginning of the output.'.format(api_url))
-    response = session.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         jsonresponse = response.json()
@@ -340,7 +343,7 @@ def get_jamf_computers_by_group(jamf_id):
 def get_jamf_mobiles():
     api_url = '{0}/JSSResource/mobiledevices'.format(jamfpro_base)
     logging.debug('Calling for JAMF mobiles against: {}\n The username, passwords, and headers for this GET requestcan be found near the beginning of the output.'.format(api_url))
-    response = session.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         return response.json()
@@ -360,7 +363,7 @@ def get_jamf_mobiles():
 def get_jamf_mobiles_by_group(jamf_id):
     api_url = '{0}/JSSResource/mobiledevicegroups/id/{1}'.format(jamfpro_base, jamf_id)
     logging.debug('Calling for JAMF mobiles against: {}\n The username, passwords, and headers for this GET requestcan be found near the beginning of the output.'.format(api_url))
-    response = session.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         jsonresponse = response.json()
@@ -381,7 +384,7 @@ def get_jamf_mobiles_by_group(jamf_id):
 # Function to lookup a JAMF asset by id.
 def search_jamf_asset(jamf_id):
     api_url = "{}/JSSResource/computers/id/{}".format(jamfpro_base, jamf_id)
-    response = session.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         jsonresponse = response.json()
@@ -402,7 +405,7 @@ def search_jamf_asset(jamf_id):
 # Function to lookup a JAMF mobile asset by id.
 def search_jamf_mobile(jamf_id):
     api_url = "{}/JSSResource/mobiledevices/id/{}".format(jamfpro_base, jamf_id)
-    response = session.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.get(api_url, headers=jamfheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     if response.status_code == 200:
         logging.debug("Got back a valid 200 response code.")
         jsonresponse = response.json()
@@ -412,8 +415,8 @@ def search_jamf_mobile(jamf_id):
         logging.info('JAMFPro responded with error code: {} - Policy Ratelimit Quota Violation - when we tried to look up id: {} Waiting a bit to retry the lookup.'.format(response, jamf_id))
         logging.warning('JAMFPro Ratelimit exceeded: pausing ')
         time.sleep(75)
-        logging.info("Finished waiting. Retyring lookup...")
-        newresponse = search_jamf_asset(jamf_id)
+        logging.info("Finished waiting. Retrying lookup...")
+        newresponse = search_jamf_mobile(jamf_id)
         return newresponse
     else:
         logging.warning('JAMFPro responded with error code:{} when we tried to look up id: {}'.format(response, jamf_id))
@@ -426,9 +429,9 @@ def update_jamf_asset_tag(jamf_id, asset_tag):
         logging.debug("Would have updated JAMF asset id: {} with asset tag: {}".format(jamf_id, asset_tag))
         return True
     api_url = "{}/JSSResource/computers/id/{}".format(jamfpro_base, jamf_id)
-    payload = """<?xml version="1.0" encoding="UTF-8"?><computer><general><id>{}</id><asset_tag>{}</asset_tag></general></computer>""".format(jamf_id, asset_tag)
+    payload = """<?xml version="1.0" encoding="UTF-8"?><computer><general><id>{}</id><asset_tag>{}</asset_tag></general></computer>""".format(jamf_id, xml_escape(str(asset_tag)))
     logging.debug('Making Get request against: {}\nPayload for the PUT request is: {}\nThe username, password, and headers can be found near the beginning of the output.'.format(api_url, payload))
-    response = session.put(api_url, data=payload, headers=jamfxmlheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.put(api_url, data=payload, headers=jamfxmlheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     if response.status_code == 201:
         logging.debug("Got a 201 response. Returning: True")
         return True
@@ -452,9 +455,9 @@ def update_jamf_mobiledevice_asset_tag(jamf_id, asset_tag):
         logging.debug("Would have updated JAMF asset id: {} with asset tag: {}".format(jamf_id, asset_tag))
         return True
     api_url = "{}/JSSResource/mobiledevices/id/{}".format(jamfpro_base, jamf_id)
-    payload = """<?xml version="1.0" encoding="UTF-8"?><mobile_device><general><id>{}</id><asset_tag>{}</asset_tag></general></mobile_device>""".format(jamf_id, asset_tag)
+    payload = """<?xml version="1.0" encoding="UTF-8"?><mobile_device><general><id>{}</id><asset_tag>{}</asset_tag></general></mobile_device>""".format(jamf_id, xml_escape(str(asset_tag)))
     logging.debug('Making Get request against: {}\nPayload for the PUT request is: {}\nThe username, password, and headers can be found near the beginning of the output.'.format(api_url, payload))
-    response = session.put(api_url, data=payload, headers=jamfxmlheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.put(api_url, data=payload, headers=jamfxmlheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     if response.status_code == 201:
         logging.debug("Got a 201 response. Returning: True")
         return True
@@ -475,7 +478,7 @@ def update_jamf_mobiledevice_asset_tag(jamf_id, asset_tag):
 # Function to lookup a snipe asset by serial number.
 def search_snipe_asset(serial):
     api_url = '{}/api/v1/hardware/byserial/{}'.format(snipe_base, serial)
-    response = session.get(api_url, headers=snipeheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.get(api_url, headers=snipeheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     if response.status_code == 200:
         jsonresponse = response.json()
         # Check to make sure there's actually a result
@@ -500,7 +503,7 @@ def search_snipe_asset(serial):
 def get_snipe_models():
     api_url = '{}/api/v1/models'.format(snipe_base)
     logging.debug('Calling against: {}'.format(api_url))
-    response = session.get(api_url, headers=snipeheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.get(api_url, headers=snipeheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     if response.status_code == 200:
         jsonresponse = response.json()
         logging.info("Got a valid response that should have {} models.".format(jsonresponse['total']))
@@ -509,8 +512,8 @@ def get_snipe_models():
         else:
             logging.info("We didn't get enough results so we need to get them again.")
             api_url = '{}/api/v1/models?limit={}'.format(snipe_base, jsonresponse['total'])
-            newresponse = session.get(api_url, headers=snipeheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
-            if response.status_code == 200:
+            newresponse = session.get(api_url, headers=snipeheaders, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
+            if newresponse.status_code == 200:
                 newjsonresponse = newresponse.json()
                 if newjsonresponse['total'] == len(newjsonresponse['rows']) :
                     return newjsonresponse
@@ -525,14 +528,16 @@ def get_snipe_models():
         raise SystemExit("Snipe models API endpoint failed.")
 
 # Recursive function returns all users in a Snipe Instance, 100 at a time.
-def get_snipe_users(previous=[]):
+def get_snipe_users(previous=None):
+    if previous is None:
+        previous = []
     user_id_url = '{}/api/v1/users'.format(snipe_base)
     payload = {
         'limit': 100,
         'offset': len(previous)
     }
     logging.debug('The payload for the snipe users GET is {}'.format(payload))
-    response = session.get(user_id_url, headers=snipeheaders, params=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.get(user_id_url, headers=snipeheaders, params=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     response_json = response.json()
     current = response_json['rows']
     if len(previous) != 0:
@@ -551,8 +556,7 @@ def get_snipe_user_id(username):
     for user in snipe_users:
         for value in user.values():
             if str(value).lower() == username:
-                id = user['id']
-                return id
+                return user['id']
     if user_args.users_no_search:
         logging.debug("No matches in snipe_users for {}, not querying the API for the next closest match since we've been told not to".format(username))
         return "NotFound"
@@ -565,10 +569,10 @@ def get_snipe_user_id(username):
         'order':'asc'
     }
     logging.debug('The payload for the snipe user search is: {}'.format(payload))
-    response = session.get(user_id_url, headers=snipeheaders, params=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.get(user_id_url, headers=snipeheaders, params=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     try:
         return response.json()['rows'][0]['id']
-    except:
+    except (KeyError, IndexError, ValueError):
         return "NotFound"
 
 # Function that creates a new Snipe Model - not an asset - with a JSON payload
@@ -593,7 +597,7 @@ def create_snipe_model(payload):
             logging.warning('Failed to fetch image for model {}: {}'.format(payload["model_number"], e))
 
     logging.debug('Calling to create new snipe model type against: {}\nThe payload for the POST request is:{}\nThe request headers can be found near the start of the output.'.format(api_url, payload))
-    response = session.post(api_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.post(api_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     if response.status_code == 200:
         jsonresponse = response.json()
         modelnumbers[jsonresponse['payload']['model_number']] = jsonresponse['payload']['id']
@@ -606,7 +610,7 @@ def create_snipe_model(payload):
 def create_snipe_asset(payload):
     api_url = '{}/api/v1/hardware'.format(snipe_base)
     logging.debug('Calling to create a new asset against: {}\nThe payload for the POST request is:{}\nThe request headers can be found near the start of the output.'.format(api_url, payload))
-    response = session.post(api_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.post(api_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     logging.debug(response.text)
     if response.status_code == 200:
         logging.debug("Got back status code: 200 - {}".format(response.content))
@@ -626,7 +630,7 @@ def update_snipe_asset(snipe_id, payload):
         return True
     api_url = '{}/api/v1/hardware/{}'.format(snipe_base, snipe_id)
     logging.debug('The payload for the snipe update is: {}'.format(payload))
-    response = session.patch(api_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.patch(api_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     # Verify that the payload updated properly.
     goodupdate = True
     if response.status_code == 200:
@@ -659,7 +663,7 @@ def checkin_snipe_asset(asset_id):
         'note':'checked in by script from Jamf'
     }
     logging.debug('The payload for the snipe checkin is: {}'.format(payload))
-    response = session.post(api_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.post(api_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     logging.debug('The response from Snipe IT is: {}'.format(response.json()))
     if response.status_code == 200:
         logging.debug("Got back status code: 200 - {}".format(response.content))
@@ -692,7 +696,7 @@ def checkout_snipe_asset(user, asset_id, checked_out_user=None):
         'note':'Assignment made automatically, via script from Jamf.'
     }
     logging.debug('The payload for the snipe checkin is: {}'.format(payload))
-    response = session.post(api_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler})
+    response = session.post(api_url, headers=snipeheaders, json=payload, verify=user_args.do_not_verify_ssl, hooks={'response': request_handler}, timeout=DEFAULT_TIMEOUT)
     logging.debug('The response from Snipe IT is: {}'.format(response.json()))
     if response.status_code == 200:
         logging.debug("Got back status code: 200 - {}".format(response.content))
@@ -708,12 +712,12 @@ logging.info("SSL Verification is set to: {}".format(user_args.do_not_verify_ssl
 # Do some tests to see if the hosts are up. Don't use hooks for these as we don't have tokens yet.
 logging.info("Running tests to see if hosts are up.")
 try:
-    SNIPE_UP = True if session.get(snipe_base, verify=user_args.do_not_verify_ssl).status_code == 200 else False
+    SNIPE_UP = True if session.get(snipe_base, verify=user_args.do_not_verify_ssl, timeout=DEFAULT_TIMEOUT).status_code == 200 else False
 except Exception as e:
     logging.exception(e)
     SNIPE_UP = False
 try:
-    JAMF_UP = True if session.get(jamfpro_base, verify=user_args.do_not_verify_ssl).status_code in (200, 401) else False
+    JAMF_UP = True if session.get(jamfpro_base, verify=user_args.do_not_verify_ssl, timeout=DEFAULT_TIMEOUT).status_code in (200, 401) else False
 except Exception as e:
     logging.exception(e)
     JAMF_UP = False
@@ -856,7 +860,7 @@ for jamf_type in jamf_types:
                     tag_split = config['snipe-it']['asset_tag'].split()
                     try:
                         jamf_asset_tag = jamf['{}'.format(tag_split[0])]['{}'.format(tag_split[1])]
-                    except:
+                    except (KeyError, IndexError, TypeError):
                         if jamf_type == 'mobile_devices':
                             jamf_asset_tag = 'jamfid-m-{}'.format(jamf['general']['id'])
                         elif jamf_type == 'computers':
@@ -864,7 +868,7 @@ for jamf_type in jamf_types:
                         else:
                             logging.error("Could not generate an asset tag for this device. Skipping")
                             # Dump the object for debugging.
-                            logging.verbose(jamf)
+                            logging.debug(jamf)
                             continue
                         #raise SystemError('No such attribute {} in the jamf payload. Please check your settings.conf file'.format(tag_split))
                 if jamf_asset_tag == None or jamf_asset_tag == '':
@@ -968,7 +972,7 @@ for jamf_type in jamf_types:
                             updates.update(payload)
                         else:
                             logging.debug("Skipping the payload, because it already exits.")
-                    except:
+                    except (KeyError, TypeError):
                         logging.debug("The snipekey lookup failed, which means it's a custom field. Parsing those to see if it needs to be updated or not.")
                         needsupdate = False
                         for CustomField in snipe['rows'][0]['custom_fields']:
