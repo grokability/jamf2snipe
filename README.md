@@ -93,6 +93,8 @@ Note: do not add `""` or `''` around any values.
 
 **[jamf]**
 
+The minimum required privliages for Jamf's API key is Read Mobile Devices, Read Computers
+
 - `url`: https://*your_jamf_instance*.com:*port*
 - `client_id`: Jamf API client ID
 - `client_secret`: Jamf API client secret

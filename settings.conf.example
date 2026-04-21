@@ -7,6 +7,7 @@ client_secret = yourClientSecret
 [snipe-it]
 #Required
 url = https://FQDN.your.snipe.instance.com
+#Minimum API required Privileges: Read Mobile Devices, Read Computers
 apikey = YOUR-API-KEY-HERE
 manufacturer_id = 2
 defaultStatus = 2
