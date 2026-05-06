@@ -31,3 +31,5 @@ name = general name
 
 [user-mapping] # The field from jamf that you want to search Snipe with
 jamf_api_field = location username
+# if you want to sync buildings
+# jamf_api_field = location username building

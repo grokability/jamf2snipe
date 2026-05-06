@@ -571,6 +571,62 @@ def get_snipe_user_id(username):
     except:
         return "NotFound"
 
+def get_snipe_locations(previous=[]):
+    locations_url = f"{snipe_base}/api/v1/locations"
+    payload = {"limit": 100, "offset": len(previous)}
+    logging.debug("The payload for the snipe locations GET is {}".format(payload))
+    response = session.get(
+        locations_url,
+        headers=snipeheaders,
+        params=payload,
+        verify=user_args.do_not_verify_ssl,
+        hooks={"response": request_handler},
+    )
+    response_json = response.json()
+    current = response_json["rows"]
+    if previous:
+        current = previous + current
+    if response_json["total"] > len(current):
+        logging.debug(
+            "We have more than 100 locations, get the next page - total: {} current: {}".format(
+                response_json["total"], len(current)
+            )
+        )
+        return get_snipe_locations(current)
+    else:
+        return current
+
+
+def get_snipe_location_id(location_name):
+    if location_name == "":
+        return "NotFound"
+    location_name = location_name.lower()
+    for location in snipe_locations:
+        for value in location.values():
+            if str(value).lower() == location_name:
+                id = location["id"]
+                return id
+    logging.debug(
+        "No matches in snipe_locations for {}, querying the API for the next closest match".format(
+            location_name
+        )
+    )
+    location_id_url = "{}/api/v1/locations".format(snipe_base)
+    payload = {"search": location_name, "limit": 1, "sort": "name", "order": "asc"}
+    logging.debug("The payload for the snipe location search is: {}".format(payload))
+    response = session.get(
+        location_id_url,
+        headers=snipeheaders,
+        params=payload,
+        verify=user_args.do_not_verify_ssl,
+        hooks={"response": request_handler},
+    )
+    try:
+        return response.json()["rows"][0]["id"]
+    except:
+        return "NotFound"
+
+
 # Function that creates a new Snipe Model - not an asset - with a JSON payload
 def create_snipe_model(payload):
     api_url = '{}/api/v1/models'.format(snipe_base)
@@ -668,7 +724,28 @@ def checkin_snipe_asset(asset_id):
         return response
 
 # Function that checks out an asset in snipe
-def checkout_snipe_asset(user, asset_id, checked_out_user=None):
+def checkout_snipe_asset(location, asset_id, checked_out_user=None):
+    jamfsplit = config["user-mapping"]["jamf_api_field"].split()
+    checked_out = None
+
+    user = None
+    building = None
+    for field in jamfsplit:
+        if field in location:
+            if field == "username":
+                user = location[field]
+            elif field == "building":
+                building = location[field]
+
+    if user:
+        checked_out = checkout_snipe_asset_to_user(user, asset_id, checked_out_user)
+
+    if not checked_out and building:
+        checked_out = checkout_snipe_asset_to_location(building, asset_id, checked_out_user)
+
+    return checked_out
+
+def checkout_snipe_asset_to_user(user, asset_id, checked_out_user=None):
     logging.debug('Asset {} is being checked out to {}'.format(user, asset_id))
     user_id = get_snipe_user_id(user)
     if user_id == 'NotFound':
@@ -700,6 +777,37 @@ def checkout_snipe_asset(user, asset_id, checked_out_user=None):
     else:
         logging.error('Asset checkout failed for asset {} with error {}'.format(asset_id,response.text))
         return response
+
+
+def checkout_snipe_asset_to_location(location, asset_id, checked_out_user=None):
+    location_id = get_snipe_location_id(location)
+    api_url = "{}/api/v1/hardware/{}/checkout".format(snipe_base, asset_id)
+    logging.info("Checking out {} to check it out to {}".format(asset_id, location))
+    payload = {
+        "checkout_to_type": "location",
+        "assigned_location": location_id,
+        "note": "Assignment made automatically, via script from Jamf.",
+    }
+    logging.debug("The payload for the snipe checkin is: {}".format(payload))
+    response = session.post(
+        api_url,
+        headers=snipeheaders,
+        json=payload,
+        verify=user_args.do_not_verify_ssl,
+        hooks={"response": request_handler},
+    )
+    logging.debug("The response from Snipe IT is: {}".format(response.json()))
+    if response.status_code == 200:
+        logging.debug("Got back status code: 200 - {}".format(response.content))
+        return "CheckedOut"
+    else:
+        logging.error(
+            "Asset checkout failed for asset {} with error {}".format(
+                asset_id, response.text
+            )
+        )
+        return response
+
 
 ### Run Testing ###
 # Report if we're verifying SSL or not.
@@ -773,6 +881,7 @@ jamf_types = {
 
 if user_args.users or user_args.users_force or user_args.users_inverse:
     snipe_users = get_snipe_users()
+    snipe_locations = get_snipe_locations()
 
 TotalNumber = 0
 if user_args.computers:
@@ -916,8 +1025,8 @@ for jamf_type in jamf_types:
                 if jamfsplit[1] not in jamf[jamfsplit[0]]:
                     logging.info("Couldn't find {} for this device in {}, not checking it out.".format(jamfsplit[1], jamfsplit[0]))
                     continue
-                logging.info('Checking out new item {} to user {}'.format(jamf['general']['name'], jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])]))
-                checkout_snipe_asset(jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])],new_snipe_asset[1].json()['payload']['id'], "NewAsset")
+                logging.info('Checking out new item {} to user {}'.format(jamf['general']['name'], jamf['{}'.format(jamfsplit[0])]))
+                checkout_snipe_asset(jamf['{}'.format(jamfsplit[0])],new_snipe_asset[1].json()['payload']['id'], "NewAsset")
         # Log an error if there's an issue, or more than once match.
         elif snipe == 'MultiMatch':
             logging.warning("WARN: You need to resolve multiple assets with the same serial number in your inventory. If you can't find them in your inventory, you might need to purge your deleted records. You can find that in the Snipe Admin settings. Skipping serial number {} for now.".format(jamf['general']['serial_number']))
@@ -991,7 +1100,7 @@ for jamf_type in jamf_types:
                         if jamfsplit[1] not in jamf[jamfsplit[0]]:
                             logging.info("Couldn't find {} for this device in {}, not checking it out.".format(jamfsplit[1], jamfsplit[0]))
                             continue
-                        checkout_snipe_asset(jamf['{}'.format(jamfsplit[0])]['{}'.format(jamfsplit[1])], snipe_id, snipe['rows'][0]['assigned_to'])
+                        checkout_snipe_asset(jamf['{}'.format(jamfsplit[0])], snipe_id, snipe['rows'][0]['assigned_to'])
                     else:
                         logging.info("Can't checkout {} since the status isn't set to deployable".format(jamf['general']['name']))
 
